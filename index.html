@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1b2027">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="せどりDESK">
+<title>せどりDESK</title>
+<style>
+:root{
+  --bg:#12151a; --panel:#1b2027; --panel2:#232a33; --line:#323a47;
+  --ink:#eae8e3; --dim:#8b93a0; --tag:#f2b134; --hot:#ff6a3d; --ok:#4ec9a5;
+  --mono:ui-monospace,SFMono-Regular,"Roboto Mono","DejaVu Sans Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans)}
+body{padding-bottom:96px;font-size:15px;line-height:1.5}
+button,input,select{font:inherit;color:inherit}
+
+/* ---- header ---- */
+header{position:sticky;top:0;z-index:30;background:var(--panel);
+  border-bottom:1px solid var(--line);padding:10px 12px 0;
+  padding-top:calc(10px + env(safe-area-inset-top))}
+.brand{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}
+.brand b{font-size:15px;letter-spacing:.04em}
+.brand span{font-family:var(--mono);font-size:10px;letter-spacing:.28em;color:var(--tag);text-transform:uppercase}
+.brand .sp{flex:1}
+.iconbtn{background:transparent;border:1px solid var(--line);border-radius:6px;
+  color:var(--dim);padding:5px 10px;font-size:12px;letter-spacing:.06em}
+.iconbtn.act{color:#12151a;background:var(--tag);border-color:var(--tag);font-weight:700}
+
+.field{display:flex;gap:6px;align-items:stretch}
+.inwrap{flex:1;position:relative;display:flex;align-items:center;
+  background:var(--bg);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.inwrap::before{content:"";width:12px;align-self:stretch;flex:none;
+  background:repeating-linear-gradient(90deg,var(--tag) 0 2px,transparent 2px 4px,var(--tag) 4px 5px,transparent 5px 8px)}
+.inwrap:focus-within{border-color:var(--tag)}
+#q{flex:1;min-width:0;background:transparent;border:0;outline:0;padding:12px 8px;
+  font-family:var(--mono);font-size:16px;letter-spacing:.04em}
+.mini{background:transparent;border:0;color:var(--dim);padding:0 10px;font-size:12px}
+#go{flex:none;background:var(--tag);color:#12151a;border:0;border-radius:8px;
+  padding:0 18px;font-weight:800;font-size:15px;letter-spacing:.06em}
+#go:active{transform:translateY(1px)}
+
+.meta{display:flex;align-items:center;gap:8px;padding:8px 2px 0;min-height:30px;
+  overflow-x:auto;scrollbar-width:none}
+.meta::-webkit-scrollbar{display:none}
+.kind{flex:none;font-family:var(--mono);font-size:10px;letter-spacing:.16em;
+  border:1px solid var(--line);color:var(--dim);border-radius:4px;padding:2px 7px}
+.kind.on{color:var(--tag);border-color:var(--tag)}
+.hist{flex:none;font-family:var(--mono);font-size:11px;color:var(--dim);
+  background:var(--panel2);border:0;border-radius:4px;padding:4px 8px}
+
+.chips{display:flex;gap:6px;overflow-x:auto;padding:10px 2px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--line);background:transparent;color:var(--dim);
+  border-radius:999px;padding:5px 12px;font-size:12.5px;white-space:nowrap}
+.chip.on{background:rgba(242,177,52,.14);border-color:var(--tag);color:var(--tag)}
+.barcode{height:3px;background:repeating-linear-gradient(90deg,
+  var(--line) 0 1px,transparent 1px 3px,var(--line) 3px 5px,transparent 5px 6px,
+  var(--line) 6px 8px,transparent 8px 12px)}
+
+/* ---- results ---- */
+main{padding:14px 12px}
+.sechead{display:flex;align-items:center;gap:8px;margin:20px 0 9px}
+.sechead h2{margin:0;font-size:11px;letter-spacing:.2em;color:var(--dim);font-weight:700}
+.sechead .rule{flex:1;height:1px;background:var(--line)}
+.sechead .cnt{font-family:var(--mono);font-size:10px;color:var(--line)}
+main>section:first-child .sechead{margin-top:2px}
+
+.res{display:flex;flex-direction:column;gap:7px}
+.res a{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);
+  background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--tag);
+  border-radius:7px;padding:12px 13px}
+.res a .nm{font-weight:600;font-size:14.5px}
+.res a .host{font-family:var(--mono);font-size:10.5px;color:var(--dim);margin-left:auto;
+  max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.res a.done{border-left-color:var(--ok);opacity:.55}
+.res a.done .nm::before{content:"✓ ";color:var(--ok)}
+.openall{width:100%;margin-top:10px;background:transparent;border:1px dashed var(--line);
+  color:var(--dim);border-radius:7px;padding:11px;font-size:12.5px}
+
+/* ---- tiles ---- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px}
+.tile{position:relative;display:flex;flex-direction:column;justify-content:space-between;
+  min-height:60px;text-decoration:none;color:var(--ink);background:var(--panel);
+  border:1px solid var(--line);border-radius:8px;padding:11px 12px}
+.tile .nm{font-size:14px;font-weight:600;line-height:1.35}
+.tile .tp{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;color:var(--dim);margin-top:7px}
+.tile.d{border-left:3px solid var(--tag)}
+.tile:active{background:var(--panel2)}
+.tile .del,.tile .star{position:absolute;top:-7px;border:1px solid var(--line);
+  background:var(--panel2);border-radius:999px;width:24px;height:24px;font-size:12px;
+  line-height:1;display:none;align-items:center;justify-content:center;padding:0}
+.tile .del{right:-6px;color:var(--hot)}
+.tile .star{right:24px;color:var(--dim)}
+.tile .star.on{color:var(--tag)}
+body.edit .tile .del,body.edit .tile .star{display:flex}
+.addtile{display:flex;align-items:center;justify-content:center;color:var(--dim);
+  background:transparent;border:1px dashed var(--line);border-radius:8px;min-height:60px;font-size:13px}
+
+/* ---- modal ---- */
+.mask{position:fixed;inset:0;background:rgba(8,10,13,.72);z-index:60;display:flex;
+  align-items:flex-end;justify-content:center}
+.sheet{width:100%;max-width:520px;background:var(--panel);border:1px solid var(--line);
+  border-radius:14px 14px 0 0;padding:18px 16px calc(20px + env(safe-area-inset-bottom))}
+.sheet h3{margin:0 0 14px;font-size:14px;letter-spacing:.08em}
+.lb{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+  color:var(--dim);margin:12px 0 5px}
+.sheet input,.sheet select{width:100%;background:var(--bg);border:1px solid var(--line);
+  border-radius:7px;padding:11px;font-size:15px;outline:0}
+.sheet input:focus,.sheet select:focus{border-color:var(--tag)}
+.hint{font-size:11.5px;color:var(--dim);margin-top:5px}
+.rowbtn{display:flex;gap:8px;margin-top:20px}
+.rowbtn button{flex:1;border-radius:8px;padding:13px;border:1px solid var(--line);
+  background:transparent;color:var(--dim);font-size:14px}
+.rowbtn button.pri{background:var(--tag);border-color:var(--tag);color:#12151a;font-weight:800}
+.danger{width:100%;margin-top:14px;background:transparent;border:1px solid var(--line);
+  color:var(--hot);border-radius:7px;padding:11px;font-size:12.5px}
+.empty{color:var(--dim);font-size:13px;padding:26px 4px;text-align:center}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:80;
+  background:var(--panel2);border:1px solid var(--line);border-radius:999px;
+  padding:9px 18px;font-size:12.5px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <b>せどりDESK</b><span>scan &amp; check</span>
+    <div class="sp"></div>
+    <button class="iconbtn" id="editBtn">編集</button>
+  </div>
+  <div class="field">
+    <div class="inwrap">
+      <input id="q" placeholder="ASIN / JAN / 型番・キーワード" autocomplete="off"
+             autocapitalize="characters" enterkeyhint="search">
+      <button class="mini" id="paste">貼付</button>
+      <button class="mini" id="clear">✕</button>
+    </div>
+    <button id="go">検索</button>
+  </div>
+  <div class="meta">
+    <span class="kind" id="kind">未入力</span>
+    <span id="hists" style="display:flex;gap:6px"></span>
+  </div>
+  <div class="chips" id="chips"></div>
+  <div class="barcode"></div>
+</header>
+
+<main>
+  <section id="results" hidden></section>
+  <div id="board"></div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ defaults ============ */
+const CATS = ["相場・リサーチ","仕入れ（ネット）","実店舗","出品・管理","物流・ツール"];
+const D = (n,cat,url,s,opt={}) => Object.assign({id:Math.random().toString(36).slice(2,9),name:n,cat,url,s:s||null,daily:false,on:false},opt);
+
+const DEFAULTS = [
+  D("Keepa","相場・リサーチ","https://keepa.com/","https://keepa.com/#!search/5-%s",
+    {asin:"https://keepa.com/#!product/5-%s",daily:true,on:true}),
+  D("Amazon","相場・リサーチ","https://www.amazon.co.jp/","https://www.amazon.co.jp/s?k=%s",
+    {asin:"https://www.amazon.co.jp/dp/%s",daily:true,on:true}),
+  D("Amazonランキング","相場・リサーチ","https://www.amazon.co.jp/gp/bestsellers/",null,{daily:true}),
+  D("価格.com","相場・リサーチ","https://kakaku.com/","https://kakaku.com/search_results/%s/",{on:true}),
+  D("ヤフオク 落札相場","相場・リサーチ","https://auctions.yahoo.co.jp/",
+    "https://auctions.yahoo.co.jp/closedsearch/closedsearch?p=%s",{on:true}),
+  D("メルカリ 売切れ","相場・リサーチ","https://jp.mercari.com/",
+    "https://jp.mercari.com/search?keyword=%s&status=sold_out",{on:true}),
+  D("JANコード検索","相場・リサーチ","https://www.jancodelookup.com/",
+    "https://www.jancodelookup.com/code/%s"),
+
+  D("楽天市場","仕入れ（ネット）","https://www.rakuten.co.jp/",
+    "https://search.rakuten.co.jp/search/mall/%s/",{on:true}),
+  D("楽天ランキング","仕入れ（ネット）","https://ranking.rakuten.co.jp/",null,{daily:true}),
+  D("Yahoo!ショッピング","仕入れ（ネット）","https://shopping.yahoo.co.jp/",
+    "https://shopping.yahoo.co.jp/search?p=%s",{on:true}),
+  D("ヤフショ ランキング","仕入れ（ネット）","https://shopping.yahoo.co.jp/ranking/",null,{daily:true}),
+  D("ヤフオク","仕入れ（ネット）","https://auctions.yahoo.co.jp/",
+    "https://auctions.yahoo.co.jp/search/search?p=%s",{on:true}),
+  D("メルカリ","仕入れ（ネット）","https://jp.mercari.com/",
+    "https://jp.mercari.com/search?keyword=%s",{daily:true,on:true}),
+  D("Yahoo!フリマ","仕入れ（ネット）","https://paypayfleamarket.yahoo.co.jp/",
+    "https://paypayfleamarket.yahoo.co.jp/search/%s"),
+  D("ラクマ","仕入れ（ネット）","https://fril.jp/","https://fril.jp/s?query=%s"),
+  D("ヨドバシ","仕入れ（ネット）","https://www.yodobashi.com/","https://www.yodobashi.com/?word=%s"),
+  D("ビックカメラ","仕入れ（ネット）","https://www.biccamera.com/",
+    "https://www.biccamera.com/bc/category/?q=%s"),
+  D("駿河屋","仕入れ（ネット）","https://www.suruga-ya.jp/",
+    "https://www.suruga-ya.jp/search?search_word=%s"),
+  D("ハードオフ ネットモール","仕入れ（ネット）","https://netmall.hardoff.co.jp/",
+    "https://netmall.hardoff.co.jp/search/?keyword=%s"),
+
+  D("パソコン工房","実店舗","https://www.pc-koubou.jp/",null,{daily:true}),
+  D("ドスパラ","実店舗","https://www.dospara.co.jp/"),
+  D("ツクモ","実店舗","https://shop.tsukumo.co.jp/"),
+  D("ヤマダウェブコム","実店舗","https://www.yamada-denkiweb.com/"),
+
+  D("セラーセントラル","出品・管理","https://sellercentral.amazon.co.jp/",null,{daily:true}),
+  D("FBA在庫管理","出品・管理","https://sellercentral.amazon.co.jp/inventory",null,{daily:true}),
+  D("注文管理","出品・管理","https://sellercentral.amazon.co.jp/orders-v3",null,{daily:true}),
+  D("料金シミュレータ","出品・管理","https://sellercentral.amazon.co.jp/revcal"),
+  D("メルカリ マイページ","出品・管理","https://jp.mercari.com/mypage"),
+  D("ヤフオク マイオク","出品・管理","https://auctions.yahoo.co.jp/user/jp/show/mystatus"),
+
+  D("ヤマト 追跡","物流・ツール","https://toi.kuronekoyamato.co.jp/cgi-bin/tneko"),
+  D("日本郵便 追跡","物流・ツール","https://trackings.post.japanpost.jp/services/srv/search/input"),
+  D("ゆうパック 料金","物流・ツール","https://www.post.japanpost.jp/fee/simulator/kokunai/"),
+];
+
+/* ============ state ============ */
+const KEY="sedori-desk:v1";
+let sites=[], hist=[], edit=false, mem=null;
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");
+  clearTimeout(t._i);t._i=setTimeout(()=>t.classList.remove("on"),1700);}
+
+function load(){
+  let raw=null;
+  try{ raw=localStorage.getItem(KEY); }catch(e){ raw=mem; }
+  try{
+    const v=JSON.parse(raw); sites=v.sites; hist=v.hist||[];
+    if(!Array.isArray(sites)||!sites.length) throw 0;
+  }catch(e){ sites=JSON.parse(JSON.stringify(DEFAULTS)); hist=[]; }
+  render();
+}
+function save(){
+  const v=JSON.stringify({sites,hist});
+  mem=v;
+  try{ localStorage.setItem(KEY,v); }catch(e){}
+}
+function exportData(){
+  const b=new Blob([JSON.stringify({sites,hist},null,1)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(b);
+  a.download="sedori-desk-backup.json";
+  a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+}
+function importData(){
+  const i=document.createElement("input"); i.type="file"; i.accept=".json,application/json";
+  i.onchange=()=>{
+    const f=i.files[0]; if(!f) return;
+    const r=new FileReader();
+    r.onload=()=>{
+      try{
+        const v=JSON.parse(r.result);
+        if(!Array.isArray(v.sites)) throw 0;
+        sites=v.sites; hist=v.hist||[]; save(); render(); toast("復元しました");
+      }catch(e){ toast("読み込めませんでした"); }
+    };
+    r.readAsText(f);
+  };
+  i.click();
+}
+
+/* ============ code kind ============ */
+function kindOf(q){
+  q=q.trim();
+  if(!q) return "";
+  if(/^B[0-9A-Z]{9}$/i.test(q)) return "ASIN";
+  if(/^\d{8}$|^\d{13}$/.test(q)) return "JAN";
+  return "キーワード";
+}
+function urlFor(site,q,k){
+  const t=(k==="ASIN"&&site.asin)?site.asin:site.s;
+  if(!t) return null;
+  return t.replace("%s",encodeURIComponent(q.trim()));
+}
+
+/* ============ render ============ */
+function render(){
+  // chips = searchable sites
+  const c=$("#chips"); c.innerHTML="";
+  sites.filter(s=>s.s).forEach(s=>{
+    const b=document.createElement("button");
+    b.className="chip"+(s.on?" on":""); b.textContent=s.name;
+    b.onclick=()=>{s.on=!s.on;save();render();if(!$("#results").hidden)run();};
+    c.appendChild(b);
+  });
+  // history
+  const h=$("#hists"); h.innerHTML="";
+  hist.slice(0,6).forEach(v=>{
+    const b=document.createElement("button");
+    b.className="hist"; b.textContent=v;
+    b.onclick=()=>{$("#q").value=v;updateKind();run();};
+    h.appendChild(b);
+  });
+  // board
+  const board=$("#board"); board.innerHTML="";
+  const groups=[["毎日チェック",sites.filter(s=>s.daily)]];
+  CATS.forEach(c2=>groups.push([c2,sites.filter(s=>s.cat===c2)]));
+  groups.forEach(([title,list],gi)=>{
+    if(!list.length&&gi===0) return;
+    const sec=document.createElement("section");
+    sec.innerHTML=`<div class="sechead"><h2>${esc(title)}</h2><div class="rule"></div>
+      <span class="cnt">${list.length}</span></div><div class="grid"></div>`;
+    const g=sec.querySelector(".grid");
+    list.forEach(s=>{
+      const a=document.createElement("a");
+      a.className="tile"+(s.daily?" d":""); a.href=s.url; a.target="_blank"; a.rel="noopener";
+      a.innerHTML=`<div class="nm">${esc(s.name)}</div>
+        <div class="tp">${s.s?"SEARCH":"LINK"}</div>`;
+      const st=document.createElement("button");
+      st.className="star"+(s.daily?" on":""); st.textContent="★";
+      st.onclick=e=>{e.preventDefault();s.daily=!s.daily;save();render();};
+      const dl=document.createElement("button");
+      dl.className="del"; dl.textContent="✕";
+      dl.onclick=e=>{e.preventDefault();
+        if(confirm(s.name+" を削除しますか？")){sites=sites.filter(x=>x.id!==s.id);save();render();}};
+      a.append(st,dl);
+      a.onclick=e=>{if(edit)e.preventDefault();};
+      g.appendChild(a);
+    });
+    if(gi>0){
+      const add=document.createElement("button");
+      add.className="addtile"; add.textContent="＋ 追加";
+      add.onclick=()=>openAdd(title);
+      g.appendChild(add);
+    }
+    board.appendChild(sec);
+  });
+  if(edit){
+    const row=document.createElement("div");
+    row.className="rowbtn"; row.style.marginTop="24px";
+    const ex=document.createElement("button"); ex.textContent="設定を書き出す";
+    ex.onclick=exportData;
+    const im=document.createElement("button"); im.textContent="設定を読み込む";
+    im.onclick=importData;
+    row.append(ex,im); board.appendChild(row);
+    const r=document.createElement("button");
+    r.className="danger"; r.textContent="初期状態に戻す（追加分は消えます）";
+    r.onclick=()=>{if(confirm("初期状態に戻しますか？")){sites=JSON.parse(JSON.stringify(DEFAULTS));save();render();}};
+    board.appendChild(r);
+  }
+}
+
+function updateKind(){
+  const k=kindOf($("#q").value); const el=$("#kind");
+  el.textContent=k||"未入力"; el.classList.toggle("on",!!k);
+}
+
+function run(){
+  const q=$("#q").value.trim();
+  const box=$("#results");
+  if(!q){box.hidden=true;box.innerHTML="";return;}
+  const k=kindOf(q);
+  if(hist[0]!==q){hist=[q,...hist.filter(v=>v!==q)].slice(0,10);save();
+    const h=$("#hists");h.innerHTML="";
+    hist.slice(0,6).forEach(v=>{const b=document.createElement("button");
+      b.className="hist";b.textContent=v;
+      b.onclick=()=>{$("#q").value=v;updateKind();run();};h.appendChild(b);});}
+  const list=sites.filter(s=>s.s&&s.on).map(s=>({s,u:urlFor(s,q,k)})).filter(x=>x.u);
+  box.hidden=false;
+  if(!list.length){box.innerHTML=`<div class="sechead"><h2>検索先</h2><div class="rule"></div></div>
+    <div class="empty">検索先が選ばれていません。上のチップをタップしてください。</div>`;return;}
+  box.innerHTML=`<div class="sechead"><h2>${k} / ${esc(q)}</h2><div class="rule"></div>
+    <span class="cnt">${list.length}</span></div><div class="res"></div>`;
+  const wrap=box.querySelector(".res");
+  list.forEach(({s,u})=>{
+    const a=document.createElement("a");
+    a.href=u;a.target="_blank";a.rel="noopener";
+    a.innerHTML=`<span class="nm">${esc(s.name)}</span>
+      <span class="host">${esc(new URL(u).hostname.replace(/^www\./,""))}</span>`;
+    a.onclick=()=>a.classList.add("done");
+    wrap.appendChild(a);
+  });
+  const all=document.createElement("button");
+  all.className="openall"; all.textContent="全部まとめて開く（ブロックされたら個別に）";
+  all.onclick=()=>{list.forEach(({u})=>window.open(u,"_blank","noopener"));
+    wrap.querySelectorAll("a").forEach(a=>a.classList.add("done"));};
+  box.appendChild(all);
+  window.scrollTo({top:0});
+}
+
+/* ============ add sheet ============ */
+function openAdd(defCat){
+  const cat=CATS.includes(defCat)?defCat:CATS[0];
+  const m=document.createElement("div"); m.className="mask";
+  m.innerHTML=`<div class="sheet">
+    <h3>サイトを追加</h3>
+    <label class="lb">NAME</label><input id="f_n" placeholder="サイト名">
+    <label class="lb">URL</label><input id="f_u" placeholder="https://..." inputmode="url">
+    <label class="lb">SEARCH URL（任意）</label><input id="f_s" placeholder="https://例.com/search?q=%s" inputmode="url">
+    <div class="hint">検索語の位置に <b>%s</b> と書くと串刺し検索に入ります。</div>
+    <label class="lb">CATEGORY</label>
+    <select id="f_c">${CATS.map(c=>`<option${c===cat?" selected":""}>${c}</option>`).join("")}</select>
+    <div class="rowbtn"><button id="f_x">やめる</button><button class="pri" id="f_o">追加する</button></div>
+  </div>`;
+  m.onclick=e=>{if(e.target===m)m.remove();};
+  document.body.appendChild(m);
+  m.querySelector("#f_x").onclick=()=>m.remove();
+  m.querySelector("#f_o").onclick=()=>{
+    const n=m.querySelector("#f_n").value.trim();
+    let u=m.querySelector("#f_u").value.trim();
+    let s=m.querySelector("#f_s").value.trim();
+    if(!n||!u){toast("サイト名とURLを入れてください");return;}
+    if(!/^https?:\/\//.test(u))u="https://"+u;
+    if(s&&!/^https?:\/\//.test(s))s="https://"+s;
+    if(s&&!s.includes("%s")){toast("検索URLに %s が必要です");return;}
+    sites.push(D(n,m.querySelector("#f_c").value,u,s||null,{on:!!s}));
+    save();render();m.remove();toast(n+" を追加しました");
+  };
+}
+
+/* ============ events ============ */
+$("#q").addEventListener("input",updateKind);
+$("#q").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();$("#q").blur();run();}});
+$("#go").onclick=run;
+$("#clear").onclick=()=>{$("#q").value="";updateKind();$("#results").hidden=true;$("#q").focus();};
+$("#paste").onclick=async()=>{
+  try{const t=await navigator.clipboard.readText();
+    if(!t){toast("クリップボードが空です");return;}
+    $("#q").value=t.trim();updateKind();run();
+  }catch(e){toast("貼り付けできません。長押しで貼り付けてください");}
+};
+$("#editBtn").onclick=()=>{edit=!edit;document.body.classList.toggle("edit",edit);
+  $("#editBtn").classList.toggle("act",edit);$("#editBtn").textContent=edit?"完了":"編集";render();};
+
+load();
+</script>
+</body>
+</html>
