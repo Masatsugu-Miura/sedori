@@ -1,0 +1,268 @@
+{
+  "stores": [
+    {
+      "id": "kinokuniya",
+      "name": "紀伊國屋書店",
+      "checker": "kinokuniya",
+      "search": "https://www.kinokuniya.co.jp/f/dsg-01-{isbn13}",
+      "home": "https://www.kinokuniya.co.jp/",
+      "enabled": true,
+      "verified": true,
+      "stores": [],
+      "note": "商品ページに全店の店舗在庫が出る。stores に『新宿本店』などを入れると絞り込み"
+    },
+    {
+      "id": "honto",
+      "name": "丸善・ジュンク堂・文教堂（honto店舗在庫）",
+      "checker": "honto",
+      "search": "https://honto.jp/netstore/search_10{isbn13}.html",
+      "home": "https://honto.jp/",
+      "enabled": true,
+      "verified": true,
+      "stores": [],
+      "note": "honto の店舗在庫検索。丸善／ジュンク堂／文教堂／戸田書店などが対象"
+    },
+    {
+      "id": "bookoff",
+      "name": "BOOKOFF（店舗在庫）",
+      "checker": "generic",
+      "search": "https://shopping.bookoff.co.jp/search/keyword/{jan}",
+      "home": "https://shopping.bookoff.co.jp/",
+      "enabled": true,
+      "verified": true,
+      "stores": [],
+      "note": "ブックオフオンラインの検索。商品ページの『店舗在庫』で各店の有無を確認"
+    },
+    {
+      "id": "ehon",
+      "name": "e-hon（トーハン系書店の店舗在庫）",
+      "checker": "generic",
+      "search": "https://www.e-hon.ne.jp/bec/SA/Detail?refISBN={isbn13}",
+      "home": "https://www.e-hon.ne.jp/",
+      "enabled": true,
+      "verified": true,
+      "stores": [],
+      "note": "My書店を設定した書店の在庫が見られる。多数の独立系書店が参加"
+    },
+    {
+      "id": "honyaclub",
+      "name": "Honya Club（日販系書店の店舗在庫）",
+      "checker": "generic",
+      "search": "https://www.honyaclub.com/shop/goods/search.aspx?search=x&keyword={isbn13}",
+      "home": "https://www.honyaclub.com/",
+      "enabled": true,
+      "verified": true,
+      "stores": [],
+      "note": "商品ページの『店舗在庫を確認』で対応書店の在庫が見られる"
+    },
+    {
+      "id": "tsutaya",
+      "name": "TSUTAYA / 蔦屋書店",
+      "checker": "generic",
+      "search": "https://store-tsutaya.tsite.jp/search?q={isbn13}",
+      "home": "https://store-tsutaya.tsite.jp/",
+      "enabled": true,
+      "verified": false,
+      "stores": [],
+      "note": "商品ページから店舗在庫を確認できる"
+    },
+    {
+      "id": "yurindo",
+      "name": "有隣堂",
+      "checker": "generic",
+      "search": "https://www.yurindo.co.jp/store/search?q={isbn13}",
+      "home": "https://www.yurindo.co.jp/",
+      "enabled": true,
+      "verified": false,
+      "stores": [],
+      "note": "検索URLは未検証。合わなければ home の在庫検索ページで確認"
+    },
+    {
+      "id": "sanseido",
+      "name": "三省堂書店",
+      "checker": "generic",
+      "search": "https://www.books-sanseido.co.jp/booksearch/BookSearchExecute.action?isbn={isbn13}",
+      "home": "https://www.books-sanseido.co.jp/",
+      "enabled": true,
+      "verified": false,
+      "stores": [],
+      "note": "検索URLは未検証"
+    },
+    {
+      "id": "miraiya",
+      "name": "未来屋書店（イオン）",
+      "checker": "generic",
+      "search": "https://www.miraiyashoten.co.jp/search/?keyword={isbn13}",
+      "home": "https://www.miraiyashoten.co.jp/",
+      "enabled": true,
+      "verified": false,
+      "stores": [],
+      "note": "検索URLは未検証"
+    },
+    {
+      "id": "kumazawa",
+      "name": "くまざわ書店",
+      "checker": "generic",
+      "search": "https://www.kumabook.com/search/?keyword={isbn13}",
+      "home": "https://www.kumabook.com/",
+      "enabled": true,
+      "verified": false,
+      "stores": [],
+      "note": "検索URLは未検証"
+    },
+    {
+      "id": "book1st",
+      "name": "ブックファースト",
+      "checker": "generic",
+      "search": "https://www.book1st.net/search/?keyword={isbn13}",
+      "home": "https://www.book1st.net/",
+      "enabled": true,
+      "verified": false,
+      "stores": [],
+      "note": "検索URLは未検証"
+    },
+    {
+      "id": "ogaki",
+      "name": "大垣書店",
+      "checker": "link",
+      "search": "",
+      "home": "https://www.books-ogaki.co.jp/",
+      "enabled": false,
+      "verified": false,
+      "stores": [],
+      "note": "検索URL（{isbn13} を含む）を search に入れて enabled を true に"
+    },
+    {
+      "id": "haruya",
+      "name": "明屋書店",
+      "checker": "link",
+      "search": "",
+      "home": "https://www.haruya.co.jp/",
+      "enabled": false,
+      "verified": false,
+      "stores": [],
+      "note": "検索URL（{isbn13} を含む）を search に入れて enabled を true に"
+    },
+    {
+      "id": "miyawaki",
+      "name": "宮脇書店",
+      "checker": "link",
+      "search": "",
+      "home": "https://www.miyawakishoten.com/",
+      "enabled": false,
+      "verified": false,
+      "stores": [],
+      "note": "検索URL（{isbn13} を含む）を search に入れて enabled を true に"
+    },
+    {
+      "id": "seibunkan",
+      "name": "精文館書店",
+      "checker": "link",
+      "search": "",
+      "home": "https://www.seibunkan.co.jp/",
+      "enabled": false,
+      "verified": false,
+      "stores": [],
+      "note": "検索URL（{isbn13} を含む）を search に入れて enabled を true に"
+    },
+    {
+      "id": "keibundo",
+      "name": "啓文堂書店",
+      "checker": "link",
+      "search": "",
+      "home": "https://www.keibundo.co.jp/",
+      "enabled": false,
+      "verified": false,
+      "stores": [],
+      "note": "検索URL（{isbn13} を含む）を search に入れて enabled を true に"
+    },
+    {
+      "id": "kikuya",
+      "name": "喜久屋書店",
+      "checker": "link",
+      "search": "",
+      "home": "https://www.kikuya-shoten.co.jp/",
+      "enabled": false,
+      "verified": false,
+      "stores": [],
+      "note": "検索URL（{isbn13} を含む）を search に入れて enabled を true に"
+    },
+    {
+      "id": "asahiya",
+      "name": "旭屋書店",
+      "checker": "link",
+      "search": "",
+      "home": "https://www.asahiya.com/",
+      "enabled": false,
+      "verified": false,
+      "stores": [],
+      "note": "検索URL（{isbn13} を含む）を search に入れて enabled を true に"
+    },
+    {
+      "id": "shosen",
+      "name": "書泉",
+      "checker": "link",
+      "search": "",
+      "home": "https://www.shosen.co.jp/",
+      "enabled": false,
+      "verified": false,
+      "stores": [],
+      "note": "検索URL（{isbn13} を含む）を search に入れて enabled を true に"
+    },
+    {
+      "id": "libro",
+      "name": "リブロ・オリオン書房・あゆみBOOKS（リブロプラス）",
+      "checker": "link",
+      "search": "",
+      "home": "https://www.libro.jp/",
+      "enabled": false,
+      "verified": false,
+      "stores": [],
+      "note": "検索URL（{isbn13} を含む）を search に入れて enabled を true に"
+    },
+    {
+      "id": "villagevanguard",
+      "name": "ヴィレッジヴァンガード",
+      "checker": "link",
+      "search": "",
+      "home": "https://www.village-v.co.jp/",
+      "enabled": false,
+      "verified": false,
+      "stores": [],
+      "note": "検索URL（{isbn13} を含む）を search に入れて enabled を true に"
+    },
+    {
+      "id": "wondergoo",
+      "name": "WonderGOO",
+      "checker": "link",
+      "search": "",
+      "home": "https://www.wondergoo.co.jp/",
+      "enabled": false,
+      "verified": false,
+      "stores": [],
+      "note": "検索URL（{isbn13} を含む）を search に入れて enabled を true に"
+    },
+    {
+      "id": "amazon",
+      "name": "Amazon（相場確認）",
+      "checker": "link",
+      "search": "https://www.amazon.co.jp/dp/{asin}",
+      "home": "https://www.amazon.co.jp/",
+      "enabled": true,
+      "verified": true,
+      "stores": [],
+      "note": "在庫チェックではなく相場確認用のリンク"
+    },
+    {
+      "id": "keepa",
+      "name": "Keepa",
+      "checker": "link",
+      "search": "https://keepa.com/#!product/5-{asin}",
+      "home": "https://keepa.com/",
+      "enabled": true,
+      "verified": true,
+      "stores": [],
+      "note": "価格推移の確認用リンク"
+    }
+  ]
+}
