@@ -22,7 +22,7 @@ import discord
 from discord import app_commands
 from dotenv import load_dotenv
 
-from . import codes
+from . import codes, watch
 from .lookup import GRAPH_FILENAME, fetch_keepa_graph, fetch_meta, resolve_asin
 from .render import build_messages
 from .stores import (check_all, home_regions, known_ids, load_configs, load_settings, make_id,
@@ -267,9 +267,45 @@ async def togglestore(interaction: discord.Interaction, store_id: str) -> None:
     await interaction.response.send_message(f"`{store_id}` は見つかりません。", ephemeral=True)
 
 
+WATCH_HOUR = int(os.environ.get("WATCH_HOUR", "12"))                 # 日販系の連携チェックを走らせる時刻（日本時間）
+WATCH_ENABLED = os.environ.get("WATCH_ENABLED", "1") != "0"
+NOTIFY_CHANNEL_ID = os.environ.get("NOTIFY_CHANNEL_ID", "").strip()  # 通知先チャンネル。無ければ DISCORD_WEBHOOK_URL
+_watch_task: Optional[asyncio.Task] = None
+
+
+async def _notify(text: str) -> None:
+    """監視の通知を送る: NOTIFY_CHANNEL_ID のチャンネル → 無ければ Webhook。"""
+    if NOTIFY_CHANNEL_ID:
+        ch = bot.get_channel(int(NOTIFY_CHANNEL_ID)) or await bot.fetch_channel(int(NOTIFY_CHANNEL_ID))
+        await ch.send(text)
+        return
+    url = os.environ.get("DISCORD_WEBHOOK_URL", "")
+    if url.startswith("https://discord.com/api/webhooks/"):
+        async with aiohttp.ClientSession(trust_env=True) as session:
+            await watch.post_webhook(session, url, text)
+    else:
+        log.warning("通知先が無いので送れません（NOTIFY_CHANNEL_ID か DISCORD_WEBHOOK_URL を設定）: %s", text[:80])
+
+
+async def _daily_watch() -> None:
+    """毎日 WATCH_HOUR 時に日販系の在庫連携をチェックし、初回と状態が変わったときに通知する。"""
+    while True:
+        try:
+            st, msg = await watch.run_once(post=False)
+            log.info("日販系連携チェック: %s", watch.summary(st))
+            if msg:
+                await _notify(msg)
+        except Exception:  # noqa: BLE001
+            log.exception("日販系連携チェックに失敗")
+        await asyncio.sleep(watch.seconds_until(WATCH_HOUR))
+
+
 @bot.event
 async def on_ready() -> None:
+    global _watch_task
     log.info("logged in as %s (%s)", bot.user, bot.user and bot.user.id)
+    if WATCH_ENABLED and (_watch_task is None or _watch_task.done()):
+        _watch_task = asyncio.create_task(_daily_watch())
 
 
 def parse_plain_message(content: str) -> Optional[tuple[str, Optional[str]]]:
