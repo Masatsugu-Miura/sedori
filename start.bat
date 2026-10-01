@@ -1,29 +1,41 @@
 @echo off
-chcp 65001 >nul
-rem せどりDESK 在庫チェック bot をこのフォルダで起動する（Windows 用）。ダブルクリックで実行。
-rem 初回は仮想環境を作って依存を入れ、.env が無ければ .env.example から作ってメモ帳で開く。
+rem Launcher for the stock-check Discord bot (Windows). Double-click to run.
+rem First run: creates a venv, installs deps, creates .env from .env.example and opens it in Notepad.
 cd /d "%~dp0"
 
 set PY=python
 where python >nul 2>nul || set PY=py
 
 if not exist .venv (
-  echo [1/3] Python の仮想環境を作成しています...
-  %PY% -m venv .venv || (echo Python が見つかりません。python.org から 3.10 以上を入れて「Add python.exe to PATH」にチェックしてください & pause & exit /b 1)
+  echo [1/3] Creating Python virtual environment...
+  %PY% -m venv .venv
+  if errorlevel 1 (
+    echo Python not found. Install Python 3.10+ from python.org and check "Add python.exe to PATH".
+    pause
+    exit /b 1
+  )
 )
 call .venv\Scripts\activate.bat
 
-echo [2/3] 必要なライブラリを確認しています...
-pip install -q -r requirements.txt || (echo ライブラリの取得に失敗しました & pause & exit /b 1)
+echo [2/3] Installing required libraries...
+pip install -q -r requirements.txt
+if errorlevel 1 (
+  echo Failed to install libraries. Check your internet connection.
+  pause
+  exit /b 1
+)
 
 if not exist .env (
   copy .env.example .env >nul
-  echo .env を作りました。開いたメモ帳の DISCORD_TOKEN= の後ろに bot のトークンを貼って保存し、この start.bat をもう一度実行してください。
-  start notepad .env
+  echo.
+  echo Created .env - Notepad will open it now.
+  echo Paste your bot token after DISCORD_TOKEN=  then save, close Notepad, and run start.bat again.
+  echo.
+  start "" notepad .env
   pause
   exit /b 0
 )
 
-echo [3/3] bot を起動します。止めるときはこのウィンドウを閉じてください。
+echo [3/3] Starting the bot. Keep this window open. Close it to stop the bot.
 python -m bot.main
 pause
