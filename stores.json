@@ -149,7 +149,7 @@
       "prefectures": [
         "全国"
       ],
-      "note": "商品ページの『全店舗の在庫一覧』（/pages/shoplist）は Cloudflare のチャレンジ（HTTP 429）付きだが、同ページの JS（My店舗在庫）が使う公開 API（api-item-info…a.run.app の店舗別在庫数＋Shopify 店舗一覧）で全店（丸善・ジュンク堂 約100店）の在庫を取る。4以上=あり/1〜3=わずか/0以下=なし。honto.jp の紙の本（旧 pd-store_）は丸善ジュンク堂ネットストアに移管済みで使えない"
+      "note": "商品ページの『全店舗の在庫一覧』（/pages/shoplist）は Cloudflare のチャレンジ（HTTP 429）付きだが、同ページの JS（My店舗在庫）が使う公開 API（api-item-info…a.run.app の店舗別在庫数＋Shopify 店舗一覧）で全店（丸善・ジュンク堂・戸田書店 約100店）の在庫を取る。4以上=あり/1〜3=わずか/0以下=なし。在庫 API が返す店舗一覧外のコード（約200）は閉店・休業店とブックスモア（秋田/青森）で、文教堂（honto 店舗ID 15+00173 形式）のコードは指定しても空＝文教堂の在庫は無い。honto.jp の紙の本（旧 pd-store_）は丸善ジュンク堂ネットストアに移管済みで使えない"
     },
     {
       "id": "sanyodo",
@@ -342,7 +342,7 @@
       "prefectures": [
         "全国"
       ],
-      "note": "店舗在庫はログインしないと出ないためリンクのみ"
+      "note": "商品ページ（/shop/g/g{id}/）の『在庫状況』は Honya Club 倉庫の在庫で、店頭在庫は会員ログイン＋受取店舗登録した一部対応店でしか出ない（Yahoo!店の案内にも『実際の書店の在庫状況とは異なります』と明記）ためリンクのみ。加盟店一覧は /shop/store/list.aspx?pref=（都道府県名を Shift_JIS で URL エンコード）→ detail.aspx?shop_id=。京都の加盟店はふたば書房・恵文社（一乗寺店/西大路店）・大学生協など 35 店"
     },
     {
       "id": "ehon",
@@ -356,7 +356,7 @@
       "prefectures": [
         "全国"
       ],
-      "note": "My書店を設定した書店の在庫が見られる"
+      "note": "表示される在庫は e-hon（トーハン）倉庫の在庫で、公式案内（content/guide/stock.html）どおり My書店の店頭在庫とは連動しない＝店舗別在庫は取れない。My書店は加盟店ページのリンク /bec/secure/CA/Forward?shotenCode=NNNNN（例: 喜久屋書店=69505）で設定。www.e-hon.ne.jp / www1.e-hon.ne.jp ともデータセンター回線からは Akamai の Access Denied（HTTP 403）で開けない"
     },
     {
       "id": "hanmoto",
@@ -399,7 +399,7 @@
       "prefectures": [
         "全国"
       ],
-      "note": "店舗在庫はネットで確認不可"
+      "note": "公式サイト（blg.co.jp/kikuya）に在庫検索は無く、ネット注文は e-hon（My書店 shotenCode=69505・宅配専用で『店頭在庫の注文は出来ません』）と Shopify の特選コミック通販（kikuyashoten.myshopify.com、店舗在庫・店舗受取の表示なし）だけ。店舗別在庫はネットで確認不可"
     },
     {
       "id": "bunkyodo",
@@ -411,10 +411,16 @@
       "verified": true,
       "stores": [],
       "prefectures": [
+        "北海道",
+        "埼玉",
+        "千葉",
         "東京",
-        "神奈川"
+        "神奈川",
+        "大阪",
+        "奈良",
+        "兵庫"
       ],
-      "note": "店舗在庫はネットで確認不可（店舗一覧のみ）"
+      "note": "公式サイトは店舗一覧（page-list-store / page-detail-store?id=）だけで在庫検索なし。旧 honto の店舗在庫検索・honto with は 2024-05-31 終了。丸善ジュンク堂ネットストアの在庫 API に文教堂の店舗コード（honto 店舗ID 15+00173 形式）は無い（指定しても空）。通販は株主専用（store.bunkyodo.co.jp は 403）と bunkyodo.shop-pro.jp（店舗在庫なし）。店舗別在庫はネットで確認不可"
     },
     {
       "id": "villagevanguard",
@@ -428,7 +434,121 @@
       "prefectures": [
         "全国"
       ],
-      "note": "店舗在庫はネットで確認不可"
+      "note": "公式通販 vvstore.jp の検索（/products/list?name=）はキーワードのみで ISBN は 0 件、商品ページ（/products/detail/{id}）にも店舗在庫・店舗受取の表示は無い（『店頭在庫SALE』というカテゴリがあるだけ）。FAQ どおり本部も店舗在庫を把握しておらず、店舗別在庫はネットで確認不可"
+    },
+    {
+      "id": "nobunaga",
+      "name": "信長書店",
+      "checker": "link",
+      "search": "https://www.e-nobunaga.com/shop/",
+      "home": "https://www.e-nobunaga.com/",
+      "enabled": false,
+      "verified": true,
+      "stores": [],
+      "prefectures": [
+        "大阪",
+        "京都",
+        "兵庫"
+      ],
+      "note": "公式サイト e-nobunaga.com は年齢認証付きの情報ポータル（店舗一覧・ブログ）で、サイト内検索（?s=）は記事検索のみ。ISBN/JAN の商品検索も在庫検索も無く、ネットショップはアダルトグッズ通販（nobunaga-toys.com）。店舗別在庫はネットで確認不可。京都は四条河原町店（紅葉書店 四条西院店は閉店）"
+    },
+    {
+      "id": "katsura",
+      "name": "桂書房（オンラインショップ）",
+      "checker": "link",
+      "search": "https://katsurabook.base.shop/search?q={isbn13}",
+      "home": "https://katsurabook.base.shop/",
+      "enabled": false,
+      "verified": true,
+      "stores": [],
+      "prefectures": [
+        "富山"
+      ],
+      "note": "富山市の出版社（株式会社桂書房、特商法表記の所在地は富山市北代）の BASE 直販ショップで、実店舗の書店は無い。自社刊行物しか無く、検索はハイフン付き ISBN（978-4-86627-161-3）なら商品が出るがハイフン無しの13桁・10桁では 0 件。商品ページの SOLD OUT は通販在庫。店舗別在庫という概念が無いため無効"
+    },
+    {
+      "id": "sanseidokyoto",
+      "name": "三盛堂書店（京都・千本）",
+      "checker": "link",
+      "search": "https://www.books.gr.jp/bookstore/index.php?e=13",
+      "home": "https://www.books.gr.jp/bookstore/index.php?e=13",
+      "enabled": false,
+      "verified": true,
+      "stores": [],
+      "prefectures": [
+        "京都"
+      ],
+      "note": "上京区千本通笹屋町上ル（075-431-2937）の個人書店。京都府書店商業組合の紹介ページにホームページ欄は無く e-mail のみで、公式サイト・オンラインショップは見つからない。Honya Club 京都加盟店一覧にも無く、店舗別在庫はネットで確認不可（取寄・配達は電話）"
+    },
+    {
+      "id": "whitebooks",
+      "name": "ホワイトブックス（京都・上鳥羽）",
+      "checker": "link",
+      "search": "https://www.tokyo-shoten.or.jp/seinenbu/shop/kyoto/81353",
+      "home": "https://www.tokyo-shoten.or.jp/seinenbu/shop/kyoto/81353",
+      "enabled": false,
+      "verified": true,
+      "stores": [],
+      "prefectures": [
+        "京都"
+      ],
+      "note": "南区上鳥羽高畠町96（075-691-2399、近鉄十条駅）。公式サイト・オンラインショップは無く、全国書店案内（tokyo-shoten.or.jp）の近隣書店一覧でも『在庫検索可能店（○）』の印が無い。Honya Club 京都加盟店一覧にも無く、店舗別在庫はネットで確認不可"
+    },
+    {
+      "id": "otowado",
+      "name": "音羽堂書店（京都・七条）",
+      "checker": "link",
+      "search": "https://www.hoitto.gr.jp/center/shop/shop010/",
+      "home": "https://www.hoitto.gr.jp/center/shop/shop010/",
+      "enabled": false,
+      "verified": true,
+      "stores": [],
+      "prefectures": [
+        "京都"
+      ],
+      "note": "山科ではなく下京区西酢屋町10（七条通大宮西入、075-371-0484）の七条センター商店街の書店。公式サイトは無く商店街サイトの紹介ページのみ。全国書店案内でも在庫検索可能店の印が無く、Honya Club 京都加盟店一覧にも無い。店舗別在庫はネットで確認不可（注文・配達は電話）"
+    },
+    {
+      "id": "tojishoin",
+      "name": "東寺書院（京都）",
+      "checker": "link",
+      "search": "https://www.tokyo-shoten.or.jp/seinenbu/shop/kyoto/81349",
+      "home": "https://www.tokyo-shoten.or.jp/seinenbu/shop/kyoto/81349",
+      "enabled": false,
+      "verified": true,
+      "stores": [],
+      "prefectures": [
+        "京都"
+      ],
+      "note": "京都市南区（075-661-0118）。公式サイト・オンラインショップは見つからず、全国書店案内の近隣書店一覧でも『在庫検索可能店（○）』の印が無い。Honya Club 京都加盟店一覧にも無く、店舗別在庫はネットで確認不可"
+    },
+    {
+      "id": "endoshoten",
+      "name": "遠藤書店（京都・東九条）",
+      "checker": "link",
+      "search": "https://www.books.gr.jp/bookstore/index.php?e=74",
+      "home": "https://www.books.gr.jp/bookstore/index.php?e=74",
+      "enabled": false,
+      "verified": true,
+      "stores": [],
+      "prefectures": [
+        "京都"
+      ],
+      "note": "南区東九条北烏丸町33（075-691-8403）。店内で立ち飲みもやる個人書店で、公式サイト・オンラインショップは無く組合紹介ページ（e-mail のみ）だけ。Honya Club 京都加盟店一覧にも無く、店舗別在庫はネットで確認不可"
+    },
+    {
+      "id": "keibunsha",
+      "name": "恵文社一乗寺店",
+      "checker": "link",
+      "search": "https://www.keibunsha-books.com/",
+      "home": "https://www.keibunsha-store.com/",
+      "enabled": false,
+      "verified": true,
+      "stores": [],
+      "prefectures": [
+        "京都"
+      ],
+      "note": "左京区一乗寺払殿町10。オンラインショップ（keibunsha-books.com、MakeShop）の検索（/shop/shopbrand.html?search=）は商品名のみで ISBN は 0 件、商品ページに ISBN も店頭在庫も無い（セレクト商品の通販在庫だけ）。Honya Club 加盟店（shop_id=115970、西大路店 116250）だが店頭在庫はログイン＋受取店舗登録が必要。店舗別在庫はネットで確認不可"
     },
     {
       "id": "amazon",

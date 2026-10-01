@@ -24,4 +24,9 @@ def test_bundled_config():
     for sid in ("kinokuniya", "tsutaya", "bookoff", "amazon", "keepa", "animate"):
         assert Checker(by_id[sid]).url_for(mag).startswith("http"), sid
     assert "名古屋" in region_keywords("愛知", DEFAULT_PATH) and "四条" in region_keywords("京都", DEFAULT_PATH)
+    # 店舗在庫がネットで取れないと確認済みの店はリンクだけ・無効のまま（地元検索の表示判定用に出店地域は持つ）
+    for sid in ("sanseidokyoto", "whitebooks", "otowado", "tojishoin", "endoshoten", "keibunsha"):
+        assert by_id[sid].checker == "link" and not by_id[sid].enabled and by_id[sid].prefectures == ["京都"], sid
+    for sid in ("kikuya", "bunkyodo", "villagevanguard", "nobunaga", "katsura"):
+        assert by_id[sid].checker == "link" and not by_id[sid].enabled and by_id[sid].note, sid
     assert Path(DEFAULT_PATH).name == "stores.json"
