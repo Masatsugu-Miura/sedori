@@ -1,7 +1,9 @@
 """書誌情報（タイトル等）の取得と、B0… ASIN から JAN/ISBN への解決。"""
 from __future__ import annotations
 
+import os
 import re
+import struct
 from dataclasses import dataclass
 from typing import Optional
 
@@ -12,6 +14,39 @@ from .codes import Code, isbn13_to_10
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")
 HEADERS = {"User-Agent": UA, "Accept-Language": "ja,en;q=0.8"}
+
+# Keepa の価格・ランキング推移グラフ（波形）。Discord は画像URLを自分で取りに行くが Keepa がそれをブロックするので、
+# bot 側で PNG を取得して添付ファイルとして送る。KEEPA_API_KEY があれば公式 API の graphimage を使う。
+GRAPH_FILENAME = "keepa.png"
+KEEPA_GRAPH = ("https://graph.keepa.com/pricehistory.png?asin={asin}&domain=co.jp"
+               "&width=800&height=300&range=365&salesrank=1&amazon=1&new=1&used=1")
+KEEPA_API_GRAPH = ("https://api.keepa.com/graphimage?key={key}&domain=5&asin={asin}"
+                   "&width=800&height=300&range=365&salesrank=1&amazon=1&new=1&used=1")
+_PNG_SIG = b"\x89PNG\r\n\x1a\n"
+
+
+def png_size(data: bytes) -> tuple[int, int]:
+    """PNG の (幅, 高さ)。PNG でなければ (0, 0)。"""
+    if len(data) < 24 or not data.startswith(_PNG_SIG):
+        return 0, 0
+    return struct.unpack(">II", data[16:24])
+
+
+async def fetch_keepa_graph(session: aiohttp.ClientSession, asin: Optional[str]) -> Optional[bytes]:
+    """Keepa のグラフ PNG を返す。ASIN が無い／取れない／ブロック画像（500x200 の案内）なら None。"""
+    if not asin:
+        return None
+    key = os.environ.get("KEEPA_API_KEY", "").strip()
+    url = KEEPA_API_GRAPH.format(key=key, asin=asin) if key else KEEPA_GRAPH.format(asin=asin)
+    try:
+        async with session.get(url, headers=HEADERS, timeout=aiohttp.ClientTimeout(total=12)) as r:
+            if r.status != 200 or "image/png" not in (r.headers.get("Content-Type") or ""):
+                return None
+            data = await r.read()
+    except Exception:  # noqa: BLE001
+        return None
+    w, _ = png_size(data)
+    return data if w >= 700 else None
 
 
 @dataclass

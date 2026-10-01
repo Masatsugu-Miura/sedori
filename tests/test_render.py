@@ -78,13 +78,21 @@ def test_store_label_is_unified_across_chains():
 
 def test_header_has_keepa_graph_and_store_totals():
     c = codes.parse("9784101010014")
-    msgs = build_messages(c, BookMeta(title="t"), _results(2, 3), None, 1.0)
+    msgs = build_messages(c, BookMeta(title="t"), _results(2, 3), None, 1.0, graph=b"\x89PNG...")
     e = msgs[0][0]
-    assert e.image.url and "graph.keepa.com" in e.image.url and "asin=4101010013" in e.image.url
+    assert e.image.url == "attachment://keepa.png"      # 波形は添付ファイルで送る（Keepa は Discord の直リンク取得を拒む）
     assert "在庫あり店舗 6店" in e.description
-    jan = codes.parse("4902370519884")     # 本以外の JAN は ASIN が無いのでグラフ無し
-    e2 = build_messages(jan, BookMeta(), [], None, 1.0)[0][0]
+    e2 = build_messages(c, BookMeta(), [], None, 1.0)[0][0]   # グラフが取れなかったときは画像なし
     assert not e2.image.url
+
+
+def test_png_size_detects_keepa_block_image():
+    import struct
+    from bot.lookup import png_size
+    png = lambda w, h: b"\x89PNG\r\n\x1a\n" + b"\x00\x00\x00\x0dIHDR" + struct.pack(">II", w, h) + b"\x00" * 8  # noqa: E731
+    assert png_size(png(800, 300)) == (800, 300)
+    assert png_size(png(500, 200)) == (500, 200)          # 「Access to price history blocked」の案内画像のサイズ
+    assert png_size(b"<html>") == (0, 0)
 
 
 def test_error_and_unverified_rows():

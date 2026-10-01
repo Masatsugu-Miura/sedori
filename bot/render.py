@@ -11,7 +11,7 @@ from typing import Optional
 import discord
 
 from .codes import Code
-from .lookup import BookMeta
+from .lookup import GRAPH_FILENAME, BookMeta
 from .stores.base import CheckResult, Status, StoreStock
 
 COLOR = 0xF2B134
@@ -21,9 +21,6 @@ FIELDS_PER_EMBED = 10
 MESSAGE_CHAR_LIMIT = 5800   # 6000 に対して余裕
 REST_FIELD_NAME = "この地域に該当店舗なし／地域外のチェーン"
 LEGEND = "🟢在庫あり 🟡わずか 🔴なし ⚪要確認 🔗リンク ⚠️失敗"
-# Keepa の価格・ランキング推移グラフ（画像）。本の ASIN が分かるときにヘッダーに貼る
-KEEPA_GRAPH = ("https://graph.keepa.com/pricehistory.png?asin={asin}&domain=co.jp"
-               "&width=800&height=300&range=365&salesrank=1&amazon=1&new=1&used=1")
 SHOWN = (Status.IN_STOCK, Status.LOW)   # 店舗行として出す状態（在庫なしの店は件数だけ）
 
 _COUNT = re.compile(r"(\d+)\s*[点冊個]|(?:残り|在庫数)[:：]?\s*(\d+)")
@@ -84,7 +81,7 @@ def _embed_len(e: discord.Embed) -> int:
 
 
 def header_embed(code: Code, meta: BookMeta, results: list[CheckResult], area: Optional[str],
-                 elapsed: float, scope_label: str = "全国") -> discord.Embed:
+                 elapsed: float, scope_label: str = "全国", graph: Optional[bytes] = None) -> discord.Embed:
     counts = {s: 0 for s in Status}
     for r in results:
         counts[r.status] += 1
@@ -105,8 +102,9 @@ def header_embed(code: Code, meta: BookMeta, results: list[CheckResult], area: O
     e = discord.Embed(title=(meta.title or "書誌情報なし")[:250], description="\n".join(lines)[:2000], color=COLOR)
     if meta.cover:
         e.set_thumbnail(url=meta.cover)
-    if code.asin:
-        e.set_image(url=KEEPA_GRAPH.format(asin=code.asin))   # 波形（価格・ランキング推移）
+    if graph:
+        # 波形（Keepa の価格・ランキング推移）。PNG は送信時に同名の添付ファイルとして付ける
+        e.set_image(url=f"attachment://{GRAPH_FILENAME}")
     e.set_footer(text=f"せどりDESK 在庫チェック • {len(results)}チェーン / {elapsed:.1f}s • {LEGEND}")
     return e
 
@@ -132,13 +130,15 @@ def split_for_region(results: list[CheckResult], serves: dict[str, bool]) -> tup
 
 def build_messages(code: Code, meta: BookMeta, results: list[CheckResult], area: Optional[str],
                    elapsed: float, scope_label: str = "全国",
-                   serves: Optional[dict[str, bool]] = None) -> list[list[discord.Embed]]:
+                   serves: Optional[dict[str, bool]] = None,
+                   graph: Optional[bytes] = None) -> list[list[discord.Embed]]:
     """Embed を複数メッセージに分けて返す。各メッセージは 10 Embed / 約6000 文字以内。
-    area 指定時（地域モード）は該当のあるチェーンだけを個別表示し、残りは1つのフィールドにまとめる。"""
+    area 指定時（地域モード）は該当のあるチェーンだけを個別表示し、残りは1つのフィールドにまとめる。
+    graph（Keepa の PNG）があれば先頭 Embed の画像にし、送る側は最初のメッセージにその PNG を添付する。"""
     messages: list[list[discord.Embed]] = []
     cur_msg: list[discord.Embed] = []
     cur_len = 0
-    cur = header_embed(code, meta, results, area, elapsed, scope_label)
+    cur = header_embed(code, meta, results, area, elapsed, scope_label, graph)
     rest: list[CheckResult] = []
     if area:
         results, rest = split_for_region(results, serves or {})

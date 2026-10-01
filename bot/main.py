@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import asyncio
+import io
 import logging
 import os
 import re
@@ -22,7 +23,7 @@ from discord import app_commands
 from dotenv import load_dotenv
 
 from . import codes
-from .lookup import fetch_meta, resolve_asin
+from .lookup import GRAPH_FILENAME, fetch_keepa_graph, fetch_meta, resolve_asin
 from .render import build_messages
 from .stores import (check_all, home_regions, known_ids, load_configs, load_settings, make_id,
                      region_keywords, save_configs)
@@ -150,20 +151,29 @@ async def run_search(text: str, area: Optional[str] = None, only: Optional[str] 
         async with aiohttp.ClientSession(trust_env=True) as session:
             if code.kind == "ASIN" and not code.isbn13:
                 await resolve_asin(session, code)
-            # 書誌と在庫チェックは独立なので並行に（書誌 API のタイムアウト待ちを在庫チェックに上乗せしない）
-            meta, results = await asyncio.gather(fetch_meta(session, code),
-                                                 check_all(code, area=area, only=only_set))
+            # 書誌・波形・在庫チェックは独立なので並行に（書誌 API のタイムアウト待ちを在庫チェックに上乗せしない）
+            meta, graph, results = await asyncio.gather(fetch_meta(session, code),
+                                                        fetch_keepa_graph(session, code.asin),
+                                                        check_all(code, area=area, only=only_set))
         serves = None
         if area:
             kws = region_keywords(area)
             serves = {c.id: c.serves(kws) for c in load_configs()}
-        messages = build_messages(code, meta, results, area, time.perf_counter() - started, scope_label, serves)
-    _cache_put(key, messages)
-    return messages, None
+        messages = build_messages(code, meta, results, area, time.perf_counter() - started, scope_label, serves,
+                                  graph)
+    _cache_put(key, (messages, graph))
+    return (messages, graph), None
 
 
-async def _send_all(first_send, rest_send, messages: list[list[discord.Embed]]) -> None:
-    await first_send(embeds=messages[0])
+def _graph_file(graph: Optional[bytes]) -> Optional[discord.File]:
+    """Keepa の PNG を添付ファイルに（discord.File は 1 回しか送れないので送信のたびに作る）。"""
+    return discord.File(io.BytesIO(graph), filename=GRAPH_FILENAME) if graph else None
+
+
+async def _send_all(first_send, rest_send, messages: list[list[discord.Embed]],
+                    graph: Optional[bytes] = None) -> None:
+    f = _graph_file(graph)
+    await (first_send(embeds=messages[0], file=f) if f else first_send(embeds=messages[0]))
     for embeds in messages[1:]:
         await rest_send(embeds=embeds)
 
@@ -171,7 +181,7 @@ async def _send_all(first_send, rest_send, messages: list[list[discord.Embed]]) 
 async def _respond(interaction: discord.Interaction, code: str, area: Optional[str], stores: Optional[str]) -> None:
     await interaction.response.defer(thinking=True)
     try:
-        messages, err = await run_search(code, area, stores)
+        found, err = await run_search(code, area, stores)
     except Exception as e:  # noqa: BLE001
         log.exception("search failed")
         await interaction.followup.send(f"エラーが発生しました: `{type(e).__name__}: {e}`")
@@ -179,8 +189,9 @@ async def _respond(interaction: discord.Interaction, code: str, area: Optional[s
     if err:
         await interaction.followup.send(err)
         return
+    messages, graph = found
     try:
-        await _send_all(interaction.followup.send, interaction.followup.send, messages)
+        await _send_all(interaction.followup.send, interaction.followup.send, messages, graph)
     except discord.HTTPException as e:
         log.exception("sending results failed")
         await interaction.followup.send(f"結果の送信に失敗しました: `{e}`")
@@ -322,7 +333,7 @@ async def on_message(message: discord.Message) -> None:
 
     try:
         async with message.channel.typing():
-            messages, err = await run_search(code_text, area)
+            found, err = await run_search(code_text, area)
     except Exception as e:  # noqa: BLE001
         log.exception("search failed")
         await message.reply(f"エラーが発生しました: `{type(e).__name__}: {e}`", mention_author=False)
@@ -330,8 +341,11 @@ async def on_message(message: discord.Message) -> None:
     if err:
         await message.reply(err, mention_author=False)
         return
+    messages, graph = found
     try:
-        first = await message.reply(embeds=messages[0], mention_author=False)
+        f = _graph_file(graph)
+        first = await (message.reply(embeds=messages[0], file=f, mention_author=False) if f
+                       else message.reply(embeds=messages[0], mention_author=False))
         for embeds in messages[1:]:
             await message.channel.send(embeds=embeds, reference=first)
     except discord.HTTPException as e:
