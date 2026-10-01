@@ -54,6 +54,16 @@ cp .env.example .env     # DISCORD_TOKEN を書く。GUILD_ID を入れるとス
 python -m bot.main
 ```
 
+### bot を立てる前に結果を見たいとき（Webhook テスト）
+Discord のチャンネル設定 → 連携サービス → ウェブフックで URL を作り、`.env` に `DISCORD_WEBHOOK_URL=` として書いてから
+
+```bash
+python scripts/webhook_test.py 9784101010014          # 全国の結果を Webhook に投稿
+python scripts/webhook_test.py 9784101010014 地元     # 地元（愛知・京都）
+python scripts/webhook_test.py 9784101010014 --dry    # 投稿せず画面に出すだけ
+```
+bot のトークンやサーバー招待なしで、実際の検索結果と各書店の読み取り状況を確認できます。
+
 ### 3. 起動（Docker）
 ```bash
 docker build -t zaikobot .
