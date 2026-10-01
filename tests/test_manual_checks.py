@@ -13,7 +13,9 @@ def test_manual_checks_filtered_by_area():
     assert {"sanseidokyoto", "whitebooks", "otowado", "tojishoin", "endoshoten", "keibunsha", "villagevanguard"} <= kyoto
     assert "emitasu" not in kyoto and "yumeya" not in kyoto
     aichi = {c.id for c in manual_checks("愛知")}
-    assert {"emitasu", "honnookoku", "yumeya", "shobunkan"} <= aichi and "sanseidokyoto" not in aichi
+    assert {"emitasu", "honnookoku", "yumeya", "shobunkan", "bonanza", "comicalhouse", "doumeishorin", "onsevendays",
+            "ryusuishobo", "libretto", "meglia", "honyaclubaichi"} <= aichi and "sanseidokyoto" not in aichi
+    assert "surugaya" not in aichi                    # 駿河屋はリンク付きで有効（自動検索欄に出る）なので手動一覧には載せない
     assert {c.id for c in manual_checks("地元")} == kyoto | aichi
     assert all(not c.enabled and c.check_by for c in manual_checks(None))
 

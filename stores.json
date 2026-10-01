@@ -76,7 +76,31 @@
       "岡崎",
       "新瑞橋",
       "熱田",
-      "ヒルズウォーク徳重"
+      "ヒルズウォーク徳重",
+      "千種",
+      "名東",
+      "天白",
+      "池下",
+      "大須",
+      "鳴海",
+      "大高",
+      "徳重",
+      "高蔵寺",
+      "桃花台",
+      "プライムツリー赤池",
+      "太田川",
+      "三河安城",
+      "東岡崎",
+      "尾西",
+      "甚目寺",
+      "布袋",
+      "吉良",
+      "豊山",
+      "大治",
+      "南知多",
+      "設楽",
+      "東栄",
+      "豊根"
     ],
     "京都": [
       "京都",
@@ -371,7 +395,7 @@
       "prefectures": [
         "全国"
       ],
-      "note": "版元ドットコムの書誌ページ『書店の店頭在庫を確認』＝書店在庫情報プロジェクト（openBS：JPIC・カーリル・版元ドットコム、info.openbs.jp）。ページ JS と同じく recommend API（位置から近い順 200 店、systemid 付きが連携店）→ カーリル蔵書検索 API（公開仕様 calil.jp/doc/api_ref.html、appkey はページ埋め込みの公開キー。CALIL_APPKEY で差し替え可）で店ごとの 在庫あり/わずか/なし/注文可能 を取る。愛知の連携店は くまざわ書店・いけだ書店（Shop_Kumazawa）、TOUTEN BOOKSTORE、NAgoya Book Center、豊川堂（本店・カルミア・田原＝Shop_Housendou、イオン豊川店＝Shop_Ogaki）、らくだ書店・あおい書店・カルコス扶桑店・鎌倉文庫（トーハン系 Shop_Tohan_店コード）、BOOKSえみたす 15 店（日販系 Shop_Nippan_店コード。2026-10 時点は全店 Error で取れず）。京都は大垣書店・くまざわ・ブックファースト。本の王国・正文館・夢屋書店・三洋堂・未来屋・三省堂は一覧に載るが未連携。都道府県ごとの代表点から集めるので県全域は網羅しない（愛知は名古屋・豊橋・岡崎・一宮の 4 点）"
+      "note": "版元ドットコムの書誌ページ『書店の店頭在庫を確認』＝書店在庫情報プロジェクト（openBS：JPIC・カーリル・版元ドットコム、info.openbs.jp）。ページ JS と同じく recommend API（位置から近い順 200 店、systemid 付きが連携店）→ カーリル蔵書検索 API（公開仕様 calil.jp/doc/api_ref.html、appkey はページ埋め込みの公開キー。CALIL_APPKEY で差し替え可）で店ごとの 在庫あり/わずか/なし/注文可能 を取る。愛知の連携店は くまざわ書店・いけだ書店（Shop_Kumazawa）、TOUTEN BOOKSTORE、NAgoya Book Center、豊川堂（本店・カルミア・田原＝Shop_Housendou、イオン豊川店＝Shop_Ogaki）、らくだ書店・あおい書店・カルコス扶桑店・鎌倉文庫（トーハン系 Shop_Tohan_店コード）、BOOKSえみたす 15 店（日販系 Shop_Nippan_店コード。2026-10 時点は全店 Error で取れず）。京都は大垣書店・くまざわ・ブックファースト。本の王国・正文館・夢屋書店・三洋堂・未来屋・三省堂は一覧に載るが未連携。都道府県ごとの代表点から集めるので県全域は網羅しない（愛知は名古屋・豊橋・岡崎・一宮の 4 点）。愛知 61 地点で総当たりしても連携店 47 店のうち 4 点の外は えみたすアピタ瀬戸店（日販系 Error）だけ。らくだ書店・あおい書店・鎌倉文庫・カルコスは 2024-10 に明屋書店（トーハン系）へ事業譲渡（らくだ東郷店は 2024-06 閉店、鎌倉文庫岡崎南店は連携継続）。星野書店近鉄パッセ店は 2026-02 の近鉄パッセ閉館で閉店"
     },
     {
       "id": "tsuhankensaku",
@@ -637,11 +661,11 @@
         "三重",
         "岐阜"
       ],
-      "note": "株式会社新進（旧 sinsin-book.co.jp/index.html は 404、トップは事業紹介）の直営店。愛知は岡崎（ルビットパーク）・刈谷（みなくる刈谷）・豊川（クロスモール）・安城・藤岡（メグリア）・三好（メグリア）・知多（イトーヨーカドー）・高蔵寺の 8 店、他に浜松・津 2 店・松阪・大垣。公式サイトは店舗一覧（/storelist）だけで在庫検索・通販は無い。書店在庫情報プロジェクトの一覧には全店載るが systemid 無し＝未連携。ほんらぶの対応チェーン一覧（2025-05）にも無く、店舗別在庫はネットで確認不可",
+      "note": "株式会社新進（旧 sinsin-book.co.jp/index.html は 404、トップは事業紹介）の直営店。愛知は岡崎（ルビットパーク）・刈谷（みなくる刈谷）・豊川（クロスモール）・安城・藤岡（メグリア）・三好（メグリア）・知多（イトーヨーカドー）・高蔵寺の 8 店、他に浜松・津 2 店・松阪・大垣。公式サイトは店舗一覧（/storelist）だけで在庫検索・通販は無い。書店在庫情報プロジェクトの一覧には全店載るが systemid 無し＝未連携。ほんらぶの対応チェーン一覧（2025-05）にも無く、店舗別在庫はネットで確認不可。2026-10 の書店在庫情報プロジェクト一覧では尾張旭店（イトーヨーカドー）・南安城店が増えて愛知 10 店（いずれも未連携）",
       "check_by": [
         "ほんらぶ"
       ],
-      "hint": "愛知8店・対応は要確認"
+      "hint": "愛知10店・対応は要確認"
     },
     {
       "id": "culcos",
@@ -706,9 +730,10 @@
       "prefectures": [
         "愛知"
       ],
-      "note": "ユニーの GMS 内書籍コーナーのブランド（Wikipedia）。愛知はピアゴ幸田・守山・布袋・新城。2016 年の再編以降 単独の公式サイトは無く、ユニーの店舗検索と Honya Club の店舗詳細（例 shop_id=139299）があるだけで在庫検索は無い。書店在庫情報プロジェクトの一覧に布袋・幸田・新城が載るが systemid 無し＝未連携。店舗別在庫はネットで確認不可",
+      "note": "ユニーの GMS 内書籍コーナーのブランド（Wikipedia）。愛知はピアゴ幸田・守山・布袋・新城。2016 年の再編以降 単独の公式サイトは無く、ユニーの店舗検索と Honya Club の店舗詳細（例 shop_id=139299）があるだけで在庫検索は無い。書店在庫情報プロジェクトの一覧に布袋・幸田・新城が載るが systemid 無し＝未連携。店舗別在庫はネットで確認不可。Honya Club 愛知加盟店一覧に新城・幸田・布袋・守山（shop_id=152518）が載り、全国書店案内にはアピタパワー木曽川店・アピタ蒲郡店もある",
       "check_by": [
-        "電話"
+        "電話",
+        "Honya Club"
       ],
       "hint": ""
     },
@@ -765,6 +790,177 @@
       ],
       "phone": "",
       "hint": "ほんらぶ対応は要確認。汐田橋・中島新町など TSUTAYA 看板の店は TSUTAYA の欄に出る"
+    },
+    {
+      "id": "surugaya",
+      "name": "駿河屋（実店舗在庫）",
+      "checker": "link",
+      "search": "https://www.suruga-ya.jp/search?category=&search_word={isbn13}&searchbox=1",
+      "search_alt": "https://www.suruga-ya.jp/feature/shoplist/aichi.html",
+      "home": "https://www.suruga-ya.jp/",
+      "enabled": true,
+      "verified": true,
+      "stores": [],
+      "prefectures": [
+        "全国"
+      ],
+      "note": "中古・新品のゲーム/本/トレカ通販。公式ブログ『ネットで見て、店舗でGET！駿河屋では実店舗の在庫が検索できます』と X 公式（2025-12）どおり、店舗一覧（feature/shoplist/aichi.html）→各店ページの『商品在庫検索』バナーから実店舗ごとの在庫を検索できる（通販在庫とは別管理）。ただし suruga-ya.jp は全ページ Cloudflare のチャレンジ（HTTP 403 'Just a moment...'）で、検索ページも商品ページもスクリプトからは開けないため自動取得せずリンクのみ。愛知は名古屋大須本館・大須トレカ館・名古屋駅前乙女館・名古屋栄店・新開橋店（三洋堂内）・ウイングタウン岡崎・豊橋三ノ輪（精文館内）・東海荒尾（精文館内）など約 12 店（精文館書店の FC 含む）"
+    },
+    {
+      "id": "bonanza",
+      "name": "ボナンザ書房（ヨシヅヤ）",
+      "checker": "link",
+      "search": "https://www.yoshizuya.com/store/",
+      "home": "https://www.yoshizuya.com/",
+      "enabled": false,
+      "verified": true,
+      "stores": [],
+      "prefectures": [
+        "愛知"
+      ],
+      "note": "ヨシヅヤ（義津屋）各店の書籍売場。書店在庫情報プロジェクトの一覧に津島本店・新稲沢・平和・佐屋・弥富・甚目寺・師勝・清洲・太平通り・ヨシヅヤ大口・JR蟹江駅前の 11 店が載るが systemid 無し＝未連携。ボナンザ書房としての公式サイト・在庫検索は無く（ヨシヅヤのサイトは店舗・チラシのみ）、Honya Club 愛知加盟店一覧にも無い。店舗別在庫はネットで確認不可",
+      "check_by": [
+        "電話"
+      ],
+      "phone": "0567-23-7110",
+      "hint": "津島本店。ヨシヅヤ内 11店"
+    },
+    {
+      "id": "comicalhouse",
+      "name": "こみかるはうす（COMICAL HOUSE）",
+      "checker": "link",
+      "search": "https://x.com/comicalmeisei",
+      "home": "https://x.com/comicalmeisei",
+      "enabled": false,
+      "verified": true,
+      "stores": [],
+      "prefectures": [
+        "愛知",
+        "岐阜"
+      ],
+      "note": "本・文具・トレカの地元チェーン（愛知は名西〔ヨシヅヤ名西〕・藤が丘駅前・池下駅・尾西〔平和堂〕・バロー新瀬戸・ベルコート〔尾張旭〕・大口・江南・小牧〔清水屋〕、岐阜は鵜沼・関マーゴ）。公式サイトは無く X / Instagram のみ。書店在庫情報プロジェクトの一覧に名西・藤が丘・COMICAL HOUSE 4 店が載るが未連携、Honya Club 加盟店一覧にも無い。店舗別在庫はネットで確認不可",
+      "check_by": [
+        "電話"
+      ],
+      "phone": "052-532-3755",
+      "hint": "名西店。愛知9店・岐阜2店"
+    },
+    {
+      "id": "doumeishorin",
+      "name": "同盟書林（半田）",
+      "checker": "link",
+      "search": "https://www.tokyo-shoten.or.jp/seinenbu/shop/aichi/80387",
+      "home": "https://www.tokyo-shoten.or.jp/seinenbu/shop/aichi/80387",
+      "enabled": false,
+      "verified": true,
+      "stores": [],
+      "prefectures": [
+        "愛知"
+      ],
+      "note": "1896 年創業の半田市本町の老舗（本店・東海市の横須賀支店・ピアゴ武豊店）。公式サイト・オンラインショップは無く、全国書店案内でも在庫検索可能店（○）の印が無い。書店在庫情報プロジェクトの一覧に 3 店とも載るが未連携、Honya Club 加盟店一覧にも無い。店舗別在庫はネットで確認不可",
+      "check_by": [
+        "電話"
+      ],
+      "phone": "0569-21-0105",
+      "hint": "本店。知多 3店"
+    },
+    {
+      "id": "onsevendays",
+      "name": "オンセブンデイズ（名鉄系）",
+      "checker": "link",
+      "search": "https://www.on-seven-days.jp/home/shop",
+      "home": "https://www.on-seven-days.jp/",
+      "enabled": false,
+      "verified": true,
+      "stores": [],
+      "prefectures": [
+        "愛知",
+        "静岡",
+        "岐阜"
+      ],
+      "note": "豊川本社（ハクヨグループ→名鉄グループ）の本・雑貨・ギフトの店。愛知はミュープラット金山・豊川本店・岩田・曙・緑丘・長久手・西尾・滝の水・如意申・上志段味・前山・半田・安城今池の 13 店。公式サイトは店舗情報とオンラインストア（雑貨）だけで書籍の在庫検索は無く、書店在庫情報プロジェクト・Honya Club 愛知加盟店のどちらにも無い。店舗別在庫はネットで確認不可",
+      "check_by": [
+        "電話"
+      ],
+      "phone": "0533-89-0022",
+      "hint": "豊川本店。愛知13店"
+    },
+    {
+      "id": "ryusuishobo",
+      "name": "流水書房（愛知）",
+      "checker": "link",
+      "search": "https://www.tokyo-shoten.or.jp/seinenbu/shop/aichi/93306",
+      "home": "https://www.tokyo-shoten.or.jp/seinenbu/shop/aichi/93306",
+      "enabled": false,
+      "verified": true,
+      "stores": [],
+      "prefectures": [
+        "愛知"
+      ],
+      "note": "スーパー内などに出店するチェーンで、全国書店案内に栄スカイル・カインズモール名古屋みなと・西友高針・名古屋平針・岡崎井ノ口の 5 店（いずれも 2023 年以降の登録）。公式サイトは見つからず、全国書店案内でも在庫検索可能店（○）の印が無い。広島の店は Honya Club 加盟だが愛知の店は加盟店一覧に無く、書店在庫情報プロジェクトの一覧にも無い。店舗別在庫はネットで確認不可",
+      "check_by": [
+        "電話"
+      ],
+      "phone": "052-238-3361",
+      "hint": "栄スカイル店。愛知5店"
+    },
+    {
+      "id": "libretto",
+      "name": "ブックス ザ・リブレット 星ヶ丘三越店",
+      "checker": "link",
+      "search": "https://www.mitsukoshi.mistore.jp/hoshigaoka/shops/experience/books.html",
+      "home": "https://www.mitsukoshi.mistore.jp/hoshigaoka/shops/experience/books.html",
+      "enabled": false,
+      "verified": true,
+      "stores": [],
+      "prefectures": [
+        "愛知"
+      ],
+      "note": "大和書店（2019-11 破産）のリブレットのうち 2020-02 に営業再開した星ヶ丘三越 5F/7F の書籍売場。公式サイトは三越の売場ページだけで在庫検索は無く、書店在庫情報プロジェクトの一覧には載るが未連携、Honya Club 加盟店一覧にも無い。店舗別在庫はネットで確認不可",
+      "check_by": [
+        "電話"
+      ],
+      "phone": "052-782-5811",
+      "hint": ""
+    },
+    {
+      "id": "meglia",
+      "name": "本のメグリア（トヨタ生協）",
+      "checker": "link",
+      "search": "https://www.meglia-net.jp/index_tenpo.htm",
+      "home": "https://www.meglia-net.jp/",
+      "enabled": false,
+      "verified": true,
+      "stores": [],
+      "prefectures": [
+        "愛知"
+      ],
+      "note": "トヨタ生協メグリア本店（豊田市山之手）3F の書籍売場。メグリア藤岡・三好の書籍売場は『本の王国』（株式会社新進）の運営で別。生協サイトは店舗・チラシのみで在庫検索は無く、書店在庫情報プロジェクトの一覧には載るが未連携。店舗別在庫はネットで確認不可",
+      "check_by": [
+        "電話"
+      ],
+      "phone": "0565-27-5481",
+      "hint": "豊田・本店3F"
+    },
+    {
+      "id": "honyaclubaichi",
+      "name": "Honya Club 加盟の地元書店（愛知）",
+      "checker": "link",
+      "search": "https://www.honyaclub.com/shop/store/list.aspx?pref=%88%A4%92m%8C%A7",
+      "home": "https://www.honyaclub.com/shop/store/list.aspx?pref=%88%A4%92m%8C%A7",
+      "enabled": false,
+      "verified": true,
+      "stores": [],
+      "prefectures": [
+        "愛知"
+      ],
+      "note": "Honya Club 愛知加盟店一覧（88 店）のうち精文館・えみたす・夢屋・本の王国・大学生協・TSUTAYA 系以外の個人書店：水野書店（南区 052-822-6244）・白沢書店（守山 052-793-6864）・金城堂（北区 052-915-6911）・泰文堂 日比野本店（熱田 052-682-3797）・刈谷日新堂書店（0566-24-7950）・たかよ書房（碧南 0566-41-1146）・花のき村（安城 0566-75-5083）・文正堂書店本店（一宮 0586-72-2605）・松清本店（稲沢 0587-23-3000）・滝書店（大府 0562-47-9515）・孝進堂書店（大府 0562-46-1937）・名和書店（東海 052-604-7428）・たつみ堂 B&S（江南 0587-55-3265）・成文堂日進店（0561-73-3833）・文光堂書店本店（昭和区 052-841-1048）。全国書店案内でも水野書店・白沢書店は在庫検索可能店（○・honyaclub）。店頭在庫は Honya Club にログインして受取店舗に設定した人だけが見られるため自動取得不可。いずれも書店在庫情報プロジェクトには未連携",
+      "check_by": [
+        "Honya Club",
+        "電話"
+      ],
+      "phone": "",
+      "hint": "水野・白沢・金城堂・泰文堂・刈谷日新堂・たかよ・花のき村・文正堂・松清・滝・孝進堂・名和・たつみ堂・成文堂・文光堂"
     }
   ]
 }

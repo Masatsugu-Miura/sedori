@@ -29,4 +29,10 @@ def test_bundled_config():
         assert by_id[sid].checker == "link" and not by_id[sid].enabled and by_id[sid].prefectures == ["京都"], sid
     for sid in ("kikuya", "bunkyodo", "villagevanguard", "nobunaga", "katsura"):
         assert by_id[sid].checker == "link" and not by_id[sid].enabled and by_id[sid].note, sid
+    # 愛知の地元チェーン（在庫検索なし）は無効＋電話/Honya Club の案内付き
+    for sid in ("bonanza", "comicalhouse", "doumeishorin", "onsevendays", "ryusuishobo", "libretto", "meglia", "honyaclubaichi"):
+        c = by_id[sid]
+        assert c.checker == "link" and not c.enabled and "愛知" in c.prefectures and c.check_by and c.note, sid
+    assert by_id["surugaya"].enabled and by_id["surugaya"].checker == "link"   # Cloudflare 越しなのでリンクのみ
+    assert {"千種", "大須", "高蔵寺", "豊山"} <= set(region_keywords("愛知", DEFAULT_PATH))
     assert Path(DEFAULT_PATH).name == "stores.json"
