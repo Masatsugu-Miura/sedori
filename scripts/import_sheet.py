@@ -20,7 +20,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from bot.codes import has_placeholder, templatize_url  # noqa: E402
-from bot.stores import load_configs, save_configs, stores_path  # noqa: E402
+from bot.stores import load_configs, make_id, save_configs, stores_path  # noqa: E402
 from bot.stores.base import StoreConfig  # noqa: E402
 
 NAME_KEYS = ("店名", "書店", "名前", "name", "チェーン")
@@ -37,19 +37,6 @@ def pick(header: list[str], keys: tuple[str, ...]) -> int | None:
             if k in h:
                 return i
     return None
-
-
-def slug(name: str, url: str, taken: set[str]) -> str:
-    base = re.sub(r"[^a-z0-9]+", "", name.lower().encode("ascii", "ignore").decode())
-    if not base and url:
-        host = (re.match(r"https?://([^/]+)", url) or [None, ""])[1]
-        base = re.sub(r"^www\.|\.(co\.jp|com|jp|net)$", "", host).replace(".", "")
-    base = base or "store"
-    s, i = base, 2
-    while s in taken:
-        s, i = f"{base}{i}", i + 1
-    taken.add(s)
-    return s
 
 
 def home_of(url: str) -> str:
@@ -83,7 +70,7 @@ def rows_to_configs(rows: list[list[str]], taken: set[str], auto: bool) -> list[
         note = cells[mi] if mi is not None and mi < len(cells) else ""
         searchable = has_placeholder(url)
         out.append(StoreConfig(
-            id=slug(name, url, taken), name=name,
+            id=make_id(name, url, taken), name=name,
             search=url if searchable else "",
             home=home_of(url),
             checker=("generic" if auto else "link") if searchable else "link",

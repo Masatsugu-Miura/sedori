@@ -66,6 +66,20 @@ def save_configs(cfgs: list[StoreConfig], path: Optional[Path] = None) -> None:
     p.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def make_id(name: str, url: str, taken: set[str]) -> str:
+    """店名（無ければ URL のホスト名）から英数字の ID を作る。taken と重ならないよう番号を付け、taken に追加する。"""
+    base = re.sub(r"[^a-z0-9]+", "", name.lower().encode("ascii", "ignore").decode())
+    if not base and url:
+        host = (re.match(r"https?://([^/]+)", url) or [None, ""])[1]
+        base = re.sub(r"^www\.|\.(co\.jp|com|jp|net)$", "", host).replace(".", "")
+    base = base or "store"
+    sid, i = base, 2
+    while sid in taken:
+        sid, i = f"{base}{i}", i + 1
+    taken.add(sid)
+    return sid
+
+
 def region_keywords(area: Optional[str], path: Optional[Path] = None) -> list[str]:
     """『愛知』のような地域名なら登録キーワード群に展開、それ以外はそのまま1語。『地元』は home_regions 全部。"""
     if not area:

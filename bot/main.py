@@ -24,7 +24,8 @@ from dotenv import load_dotenv
 from . import codes
 from .lookup import fetch_meta, resolve_asin
 from .render import build_messages
-from .stores import check_all, home_regions, known_ids, load_configs, region_keywords, save_configs
+from .stores import (check_all, home_regions, known_ids, load_configs, make_id, region_keywords,
+                     save_configs)
 from .stores.base import StoreConfig
 
 load_dotenv()
@@ -82,6 +83,12 @@ def _cache_put(key: tuple, value) -> None:
     _cache[key] = (time.monotonic(), value)
 
 
+def _save_configs(cfgs: list[StoreConfig]) -> None:
+    """stores.json を保存し、古い登録内容で作った検索結果キャッシュを捨てる。"""
+    save_configs(cfgs)
+    _cache.clear()
+
+
 def resolve_area(area: Optional[str]) -> tuple[Optional[str], str]:
     """入力の地域指定を (check_all に渡す area, 表示ラベル) にする。"""
     a = (area or "").strip()
@@ -99,7 +106,7 @@ async def run_search(text: str, area: Optional[str] = None, only: Optional[str] 
     """コード判定 → ASIN解決 → 書誌 → 全店チェック。(messages, error_message) を返す。"""
     code = codes.parse(text)
     if not code.valid:
-        return None, ("コードを認識できませんでした。ASIN（例 `4101010018` / `B0XXXXXXXX`）か "
+        return None, ("コードを認識できませんでした。ASIN（例 `4101010013` / `B0XXXXXXXX`）か "
                       "JAN/ISBN 13桁（例 `9784101010014`）、Amazon の URL を入れてください。")
     only_set = {s.strip() for s in only.split(",") if s.strip()} if only else None
     if only_set:
@@ -119,8 +126,9 @@ async def run_search(text: str, area: Optional[str] = None, only: Optional[str] 
         async with aiohttp.ClientSession(trust_env=True) as session:
             if code.kind == "ASIN" and not code.isbn13:
                 await resolve_asin(session, code)
-            meta = await fetch_meta(session, code)
-        results = await check_all(code, area=area, only=only_set)
+            # 書誌と在庫チェックは独立なので並行に（書誌 API のタイムアウト待ちを在庫チェックに上乗せしない）
+            meta, results = await asyncio.gather(fetch_meta(session, code),
+                                                 check_all(code, area=area, only=only_set))
         serves = None
         if area:
             kws = region_keywords(area)
@@ -146,8 +154,12 @@ async def _respond(interaction: discord.Interaction, code: str, area: Optional[s
         return
     if err:
         await interaction.followup.send(err)
-    else:
+        return
+    try:
         await _send_all(interaction.followup.send, interaction.followup.send, messages)
+    except discord.HTTPException as e:
+        log.exception("sending results failed")
+        await interaction.followup.send(f"結果の送信に失敗しました: `{e}`")
 
 
 @bot.tree.command(name="zaiko", description="全国の書店で本の店舗在庫を検索（area で地域絞り込みも可）")
@@ -180,6 +192,7 @@ async def stores_cmd(interaction: discord.Interaction) -> None:
 
 
 @bot.tree.command(name="addstore", description="書店を追加（リンク表示、または検索ページの自動解析）")
+@app_commands.default_permissions(manage_guild=True)
 @app_commands.describe(name="表示名（例: 〇〇書店）",
                        url="検索URL。{isbn13} などのプレースホルダ、または実際にISBNで検索したURLをそのまま貼る",
                        auto="検索ページを開いて在庫表記を自動で読む（デフォルト: リンクのみ）",
@@ -196,34 +209,23 @@ async def addstore(interaction: discord.Interaction, name: str, url: str, auto: 
             ephemeral=True)
         return
     cfgs = load_configs()
-    sid = _make_id(name, url, {c.id for c in cfgs})
+    sid = make_id(name, url, {c.id for c in cfgs})
     branch = [s.strip() for s in re.split(r"[、,/／]", stores or "") if s.strip()]
     cfgs.append(StoreConfig(id=sid, name=name, search=url, checker="generic" if auto else "link",
                             enabled=True, verified=False, stores=branch, note="Discordから追加"))
-    save_configs(cfgs)
+    _save_configs(cfgs)
     await interaction.response.send_message(f"追加しました: `{sid}` {name}\n{url}", ephemeral=True)
 
 
-def _make_id(name: str, url: str, taken: set[str]) -> str:
-    base = re.sub(r"[^a-z0-9]+", "", name.lower().encode("ascii", "ignore").decode())
-    if not base:
-        host = (re.match(r"https?://([^/]+)", url) or [None, ""])[1]
-        base = re.sub(r"^www\.|\.(co\.jp|com|jp|net)$", "", host).replace(".", "")
-    base = base or "store"
-    sid, i = base, 2
-    while sid in taken:
-        sid, i = f"{base}{i}", i + 1
-    return sid
-
-
 @bot.tree.command(name="togglestore", description="チェーンの有効/無効を切り替え")
+@app_commands.default_permissions(manage_guild=True)
 @app_commands.describe(store_id="/stores に出る ID")
 async def togglestore(interaction: discord.Interaction, store_id: str) -> None:
     cfgs = load_configs()
     for c in cfgs:
         if c.id == store_id:
             c.enabled = not c.enabled
-            save_configs(cfgs)
+            _save_configs(cfgs)
             await interaction.response.send_message(
                 f"`{c.id}` {c.name} を {'有効' if c.enabled else '無効'} にしました。", ephemeral=True)
             return
@@ -245,6 +247,9 @@ def parse_plain_message(content: str) -> Optional[tuple[str, Optional[str]]]:
         return None
     is_url = bool(re.search(r"amazon\.co\.jp", tokens[0], re.I))
     if not is_url and len(tokens[0]) > 20:
+        return None
+    # 電話番号（10桁）や日付（8桁）に反応しないよう、数字だけのコードはチェックディジットが合うものに限る
+    if not is_url and not codes.has_valid_check_digit(cand):
         return None
     area = " ".join(tokens[1:]) or None
     if area and len(area) > 10:
@@ -297,9 +302,13 @@ async def on_message(message: discord.Message) -> None:
     if err:
         await message.reply(err, mention_author=False)
         return
-    first = await message.reply(embeds=messages[0], mention_author=False)
-    for embeds in messages[1:]:
-        await message.channel.send(embeds=embeds, reference=first)
+    try:
+        first = await message.reply(embeds=messages[0], mention_author=False)
+        for embeds in messages[1:]:
+            await message.channel.send(embeds=embeds, reference=first)
+    except discord.HTTPException as e:
+        log.exception("sending results failed")
+        await message.reply(f"結果の送信に失敗しました: `{e}`", mention_author=False)
 
 
 def main() -> None:

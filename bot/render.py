@@ -18,7 +18,8 @@ MAX_ROWS = 8            # 1チェーンあたり表示する店舗行
 FIELD_LIMIT = 1000
 FIELDS_PER_EMBED = 10
 MESSAGE_CHAR_LIMIT = 5800   # 6000 に対して余裕
-LEGEND = "🟢在庫あり 🟡わずか 🔴なし ⚪要確認 🔗リンク ⚠️失敗"
+REST_FIELD_NAME = "この地域に該当店舗なし／地域外のチェーン"
+LEGEND ="🟢在庫あり 🟡わずか 🔴なし ⚪要確認 🔗リンク ⚠️失敗"
 
 
 def field_value(r: CheckResult, max_rows: int = MAX_ROWS) -> str:
@@ -115,32 +116,26 @@ def build_messages(code: Code, meta: BookMeta, results: list[CheckResult], area:
             messages.append(cur_msg)
         cur_msg, cur_len = [], 0
 
-    for r in results:
-        name = f"{r.status.emoji} {r.chain}"[:256]
-        value = field_value(r) or "-"
-        add = len(name) + len(value)
+    def add_field(name: str, value: str) -> None:
+        """1 フィールド追加。Embed あたりのフィールド数・メッセージあたりの Embed 数／文字数を超えるなら先に区切る。"""
         if len(cur.fields) >= FIELDS_PER_EMBED:
             flush_embed()
-        if cur_len + _embed_len(cur) + add > MESSAGE_CHAR_LIMIT or len(cur_msg) >= 10 - 1 and cur.fields:
+        if cur_len + _embed_len(cur) + len(name) + len(value) > MESSAGE_CHAR_LIMIT or len(cur_msg) >= 10 - 1 and cur.fields:
             flush_embed()
             flush_message()
         cur.add_field(name=name, value=value, inline=False)
+
+    for r in results:
+        add_field(f"{r.status.emoji} {r.chain}"[:256], field_value(r) or "-")
     if rest:
-        lines = [compact_line(r) for r in rest]
         chunk: list[str] = []
-        for ln in lines:
-            if sum(len(x) + 1 for x in chunk) + len(ln) > FIELD_LIMIT:
-                _add_rest_field(cur, chunk)
+        for ln in (compact_line(r) for r in rest):
+            if chunk and sum(len(x) + 1 for x in chunk) + len(ln) > FIELD_LIMIT:
+                add_field(REST_FIELD_NAME, "\n".join(chunk))
                 chunk = []
-                if len(cur.fields) >= FIELDS_PER_EMBED:
-                    flush_embed()
             chunk.append(ln)
         if chunk:
-            _add_rest_field(cur, chunk)
+            add_field(REST_FIELD_NAME, "\n".join(chunk))
     flush_embed()
     flush_message()
     return messages
-
-
-def _add_rest_field(embed: discord.Embed, lines: list[str]) -> None:
-    embed.add_field(name="この地域に該当店舗なし／地域外のチェーン", value="\n".join(lines) or "-", inline=False)

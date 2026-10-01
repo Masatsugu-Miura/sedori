@@ -29,6 +29,8 @@ def parse_stock_table(html: str) -> list[StoreStock]:
 
 
 class AnimateChecker(Checker):
+    needs_search_page = False
+
     async def parse(self, session: aiohttp.ClientSession, code: Code, html: str, res: CheckResult) -> list[StoreStock]:
         jan = code.jan or code.isbn13
         if not jan:

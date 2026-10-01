@@ -58,6 +58,8 @@ def merge(shops: list[dict], stock_text: str) -> list[StoreStock]:
 
 
 class MiraiyaChecker(Checker):
+    needs_search_page = False
+
     async def parse(self, session: aiohttp.ClientSession, code: Code, html: str, res: CheckResult) -> list[StoreStock]:
         isbn = code.isbn13
         if not isbn:

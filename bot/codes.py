@@ -79,6 +79,17 @@ def is_valid_ean13(s: str) -> bool:
     return bool(re.fullmatch(r"\d{13}", s)) and ean13_check(s[:12]) == s[12]
 
 
+def has_valid_check_digit(s: str) -> bool:
+    """ISBN-10 / JAN-13 / JAN-8 のチェックディジットが合うか。ASIN（B…）は検証できないので True。"""
+    if re.fullmatch(r"B[0-9A-Z]{9}", s):
+        return True
+    if len(s) == 10:
+        return is_valid_isbn10(s)
+    if len(s) == 8:
+        return is_valid_ean13("00000" + s)
+    return is_valid_ean13(s)
+
+
 def isbn10_to_13(isbn10: str) -> str:
     core = "978" + isbn10[:9]
     return core + ean13_check(core)

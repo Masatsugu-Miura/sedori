@@ -278,6 +278,8 @@ class Checker:
     """1チェーン分の在庫チェック。サブクラスは `parse` または `check` を上書きする。"""
 
     timeout = aiohttp.ClientTimeout(total=12)
+    # False: parse() が在庫 API を自前で引くので、検索URL（cfg.search）は表示用リンクとしてだけ使い取得しない
+    needs_search_page = True
 
     def __init__(self, cfg: StoreConfig):
         self.cfg = cfg
@@ -304,20 +306,22 @@ class Checker:
         if not url:
             res.status, res.message = Status.LINK, "この店はこのコード種別では検索URLを作れません"
             return res
-        try:
-            status, html = await self.fetch(session, url)
-            alt = code.fill(self.cfg.search_alt)
-            if status in (404, 410) and alt and alt != url:
-                # 商品ページ形式のURLが外れたときは検索ページに切り替える
-                status, html = await self.fetch(session, alt)
-                res.url = alt
-                res.message = "商品ページが無かったため検索ページで確認"
-        except Exception as e:  # noqa: BLE001
-            res.status, res.message = Status.ERROR, f"接続失敗（{type(e).__name__}）"
-            return res
-        if status >= 400:
-            res.status, res.message = Status.ERROR, f"HTTP {status}"
-            return res
+        html = ""
+        if self.needs_search_page:
+            try:
+                status, html = await self.fetch(session, url)
+                alt = code.fill(self.cfg.search_alt)
+                if status in (404, 410) and alt and alt != url:
+                    # 商品ページ形式のURLが外れたときは検索ページに切り替える
+                    status, html = await self.fetch(session, alt)
+                    res.url = alt
+                    res.message = "商品ページが無かったため検索ページで確認"
+            except Exception as e:  # noqa: BLE001
+                res.status, res.message = Status.ERROR, f"接続失敗（{type(e).__name__}）"
+                return res
+            if status >= 400:
+                res.status, res.message = Status.ERROR, f"HTTP {status}"
+                return res
         try:
             stocks = await self.parse(session, code, html, res)
         except Exception as e:  # noqa: BLE001

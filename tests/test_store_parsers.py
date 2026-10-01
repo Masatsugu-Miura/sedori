@@ -102,7 +102,7 @@ def test_animate_parser_and_flow():
     c = AnimateChecker(cfg("animate", "animate", "https://www.animate-onlineshop.jp/products/list.php?smt={code}"))
     res = run(c, {"list.php": (200, "<html></html>"), "zaiko.shoptech.jp": "animate_none.html"})
     assert res.status == Status.UNKNOWN and "該当商品" in res.message
-    assert "product_code=9784101010014" in res.calls[1][0]
+    assert len(res.calls) == 1 and "product_code=9784101010014" in res.calls[0][0]   # 商品一覧ページは取得しない
 
 
 # --- 未来屋 -----------------------------------------------------------------------
@@ -118,7 +118,7 @@ def test_miraiya_parsers_and_flow():
     assert res.status == Status.LOW and res.url.endswith("?pref=23")
     assert any("prefecture=23" in u for u, _ in res.calls)
     nat = run(MiraiyaChecker(c.cfg), {"/neighborhood/": (200, "<html></html>")})
-    assert nat.status == Status.UNKNOWN and len(nat.calls) == 1
+    assert nat.status == Status.UNKNOWN and len(nat.calls) == 0
 
 
 # --- 三洋堂 -----------------------------------------------------------------------
