@@ -240,6 +240,40 @@ def decode_html(raw: bytes, header_charset: Optional[str]) -> str:
     return best if best is not None else raw.decode("utf-8", errors="replace")
 
 
+# --- 地域（都道府県）まわり ------------------------------------------------------
+# JIS 都道府県コード順（index+1 がコード）
+PREFECTURES = ["北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県", "茨城県", "栃木県", "群馬県",
+               "埼玉県", "千葉県", "東京都", "神奈川県", "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県",
+               "岐阜県", "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県",
+               "鳥取県", "島根県", "岡山県", "広島県", "山口県", "徳島県", "香川県", "愛媛県", "高知県", "福岡県",
+               "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"]
+AREA_ONLY_MSG = "全国指定では店舗別在庫を取りません。地域を指定すると取得します（例: 地元 / 愛知）"
+
+
+def pref_short(full: str) -> str:
+    return full if full == "北海道" else full[:-1]
+
+
+def prefs_in_keywords(keywords: Optional[list[str]]) -> list[tuple[int, str]]:
+    """地域キーワードのうち都道府県名そのもの（『愛知』『京都府』）を (JISコード, 正式名) にする。"""
+    out: list[tuple[int, str]] = []
+    for k in keywords or []:
+        for i, p in enumerate(PREFECTURES, 1):
+            if k in (p, pref_short(p)) and (i, p) not in out:
+                out.append((i, p))
+    return out
+
+
+def short_area(address: str) -> str:
+    """住所から『愛知・名古屋市』『京都市』のような地域ラベルを作る（店名に添えて地域で絞れるようにする）。
+    『東京都』のままだと地域キーワード『京都』に部分一致してしまうので、都道府県は短縮形＋『・』で区切る。"""
+    a = re.sub(r"\s+", "", address or "")
+    pref = next((p for p in PREFECTURES if a.startswith(p)), "")
+    m = re.match(r"(.+?[市区町村郡])", a[len(pref):])
+    city = m.group(1) if m else ""
+    return "・".join(x for x in (pref_short(pref) if pref else "", city) if x)
+
+
 class Checker:
     """1チェーン分の在庫チェック。サブクラスは `parse` または `check` を上書きする。"""
 
@@ -247,16 +281,23 @@ class Checker:
 
     def __init__(self, cfg: StoreConfig):
         self.cfg = cfg
+        self.keywords: list[str] = []   # check() 中の地域キーワード（サイト側で地域を絞る店が使う）
 
     def url_for(self, code: Code) -> str:
         return code.fill(self.cfg.search) or code.fill(self.cfg.search_alt)
 
-    async def fetch(self, session: aiohttp.ClientSession, url: str) -> tuple[int, str]:
-        async with session.get(url, headers=HEADERS, timeout=self.timeout, allow_redirects=True) as r:
+    async def fetch(self, session: aiohttp.ClientSession, url: str, data: Optional[dict] = None,
+                    headers: Optional[dict] = None) -> tuple[int, str]:
+        """data を渡すと POST（フォーム送信）。"""
+        h = {**HEADERS, **(headers or {})}
+        req = session.post(url, data=data, headers=h, timeout=self.timeout) if data is not None else \
+            session.get(url, headers=h, timeout=self.timeout, allow_redirects=True)
+        async with req as r:
             raw = await r.read()
             return r.status, decode_html(raw, r.charset)
 
     async def check(self, session: aiohttp.ClientSession, code: Code, keywords: Optional[list[str]] = None) -> CheckResult:
+        self.keywords = list(keywords or [])
         url = self.url_for(code)
         res = CheckResult(chain_id=self.cfg.id, chain=self.cfg.name, url=url or self.cfg.home,
                           verified=self.cfg.verified)

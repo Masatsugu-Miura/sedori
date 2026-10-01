@@ -11,16 +11,28 @@ from typing import Optional
 import aiohttp
 
 from ..codes import Code
+from .animate import AnimateChecker
 from .base import Checker, CheckResult, Status, StoreConfig
+from .book1st import Book1stChecker
 from .generic import GenericChecker, LinkOnlyChecker
 from .honto import HontoChecker
 from .kinokuniya import KinokuniyaChecker
+from .miraiya import MiraiyaChecker
+from .sanseido import SanseidoChecker
+from .sanyodo import SanyodoChecker
+from .tsutaya import TsutayaChecker
 
 CHECKERS: dict[str, type[Checker]] = {
     "generic": GenericChecker,
     "link": LinkOnlyChecker,
     "kinokuniya": KinokuniyaChecker,
     "honto": HontoChecker,
+    "tsutaya": TsutayaChecker,
+    "book1st": Book1stChecker,
+    "animate": AnimateChecker,
+    "miraiya": MiraiyaChecker,
+    "sanyodo": SanyodoChecker,
+    "sanseido": SanseidoChecker,
 }
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -93,7 +105,8 @@ async def check_all(code: Code, area: Optional[str] = None, only: Optional[set[s
     # only 指定時は無効チェーンも明示指定なら対象にする
     cfgs = [c for c in load_configs() if (c.id in only if only else c.enabled)]
     sem = asyncio.Semaphore(concurrency)
-    connector = aiohttp.TCPConnector(limit=concurrency)
+    # 1チェーンの中で複数ページを並行取得する店があるので、全体の上限は多めに・同一サイトへは 4 本まで
+    connector = aiohttp.TCPConnector(limit=concurrency * 3, limit_per_host=4)
     async with aiohttp.ClientSession(connector=connector, cookie_jar=aiohttp.CookieJar(unsafe=True),
                                      trust_env=True) as session:
         async def run(cfg: StoreConfig) -> CheckResult:

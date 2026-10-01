@@ -2,7 +2,7 @@
 from pathlib import Path
 
 from bot import codes
-from bot.stores import DEFAULT_PATH, load_configs, load_settings, region_keywords
+from bot.stores import CHECKERS, DEFAULT_PATH, load_configs, load_settings, region_keywords
 from bot.stores.base import Checker
 
 
@@ -16,7 +16,7 @@ def test_bundled_config():
     book = codes.parse("9784101010014")
     mag = codes.parse("4910012345678")
     for c in cfgs:
-        assert c.checker in ("generic", "link", "kinokuniya", "honto"), c.id
+        assert c.checker in CHECKERS, c.id
         url = Checker(c).url_for(book)
         assert url.startswith("http"), (c.id, url)
     # 雑誌JAN（ISBNなし）でもキーワード検索型の店はURLが作れること

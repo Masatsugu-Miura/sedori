@@ -125,7 +125,7 @@
       "id": "kinokuniya",
       "name": "紀伊國屋書店",
       "checker": "kinokuniya",
-      "search": "https://www.kinokuniya.co.jp/f/dsg-01-{isbn13}",
+      "search": "https://www.kinokuniya.co.jp/disp/CKnSfStockSearchStoreEncrypt_001.jsp?CAT=01&GOODS_STK_NO={isbn13}",
       "search_alt": "https://www.kinokuniya.co.jp/disp/CSfDispListPage_001.jsp?qs=true&ptk=01&q={code}",
       "home": "https://www.kinokuniya.co.jp/",
       "enabled": true,
@@ -134,32 +134,32 @@
       "prefectures": [
         "全国"
       ],
-      "note": "商品ページに全店の店舗在庫が出る"
+      "note": "商品ページ(/f/dsg-01-{isbn13})に店舗在庫の表は無い。『店の在庫を確認』の店舗選択ページから1店ずつPOSTで在庫を取る（地域指定時のみ）。商品・検索ページはデータセンター回線だと無応答のことがあるが店舗在庫の経路は応答する"
     },
     {
       "id": "maruzenjunkudo",
       "name": "丸善ジュンク堂書店",
-      "checker": "generic",
+      "checker": "link",
       "search": "https://www.maruzenjunkudo.co.jp/products/{isbn13}",
       "search_alt": "https://www.maruzenjunkudo.co.jp/search?q={code}",
       "home": "https://www.maruzenjunkudo.co.jp/",
       "enabled": true,
-      "verified": false,
+      "verified": true,
       "stores": [],
       "prefectures": [
         "全国"
       ],
-      "note": "自社サイトの商品ページに店舗在庫。商品URLが違えば検索ページに切り替わる"
+      "note": "店舗在庫（/pages/shoplist）は Cloudflare のチャレンジ（HTTP 429）付きで自動取得不可。商品ページの『全店舗の在庫一覧』から確認"
     },
     {
       "id": "sanyodo",
       "name": "三洋堂書店",
-      "checker": "generic",
-      "search": "https://www.sanyodo.co.jp/search?q={code}",
-      "search_alt": "https://www.sanyodo.co.jp/",
+      "checker": "sanyodo",
+      "search": "https://www.sanyodo.co.jp/lookup/products-list?isbncd={isbn13}&booksearch=1",
+      "search_alt": "https://www.sanyodo.co.jp/lookup",
       "home": "https://www.sanyodo.co.jp/",
       "enabled": true,
-      "verified": false,
+      "verified": true,
       "stores": [],
       "prefectures": [
         "愛知",
@@ -168,17 +168,17 @@
         "静岡",
         "滋賀"
       ],
-      "note": "愛知中心のチェーン。検索URLは未検証"
+      "note": "商品検索→商品詳細の『お店の在庫状況』に全店のあり/なし。店名に店舗一覧の住所（市まで）を添える"
     },
     {
       "id": "ogaki",
       "name": "大垣書店",
-      "checker": "generic",
-      "search": "https://www.books-ogaki.co.jp/kensaku?q={code}",
-      "search_alt": "https://www.books-ogaki.co.jp/kensaku",
+      "checker": "link",
+      "search": "https://www.books-ogaki.co.jp/kensaku",
+      "search_alt": "",
       "home": "https://www.books-ogaki.co.jp/",
       "enabled": true,
-      "verified": false,
+      "verified": true,
       "stores": [],
       "prefectures": [
         "京都",
@@ -187,7 +187,7 @@
         "兵庫",
         "東京"
       ],
-      "note": "京都中心のチェーン。検索URLは未検証"
+      "note": "在庫検索は kensaku.syoten-web.com への POST フォームで、この環境からは全URLが 403（国内回線限定の可能性）。リンク先でISBNを入力"
     },
     {
       "id": "miyawaki",
@@ -206,24 +206,24 @@
     {
       "id": "sanseido",
       "name": "三省堂書店",
-      "checker": "generic",
-      "search": "https://www.books-sanseido.jp/booksearch/BookSearchExecute.action?isbn={isbn13}",
+      "checker": "sanseido",
+      "search": "https://www.books-sanseido.jp/booksearch/BookStockList.action?shopCode=&areaCode=&shoshiKubun=1&isbn={isbn13}&page=1",
       "search_alt": "https://www.books-sanseido.jp/booksearch/BookSearchInit.action",
       "home": "https://www.books-sanseido.jp/",
       "enabled": true,
-      "verified": false,
+      "verified": true,
       "stores": [],
       "prefectures": [
         "全国"
       ],
-      "note": "検索URLは未検証。ダメなら検索トップにフォールバック"
+      "note": "BookStockList.action に全店の在庫（○×）表"
     },
     {
       "id": "yurindo",
       "name": "有隣堂",
-      "checker": "generic",
-      "search": "https://search.yurindo.bscentral.com/search?q={code}",
-      "search_alt": "https://search.yurindo.bscentral.com/search",
+      "checker": "link",
+      "search": "https://search.yurindo.bscentral.jp/item?ic={isbn13}",
+      "search_alt": "https://search.yurindo.bscentral.jp/search",
       "home": "https://www.yurindo.co.jp/",
       "enabled": true,
       "verified": false,
@@ -233,13 +233,13 @@
         "東京",
         "千葉"
       ],
-      "note": "検索URLは未検証"
+      "note": "在庫検索は JS アプリ（Bookstore Central）で、API の送受信が難読化されているため自動取得しない。旧URL(.com)は証明書エラー、正しくは .jp"
     },
     {
       "id": "kumazawa",
       "name": "くまざわ書店",
-      "checker": "generic",
-      "search": "https://www.search.kumabook.com/kumazawa/html/search?isbn={isbn13}",
+      "checker": "link",
+      "search": "https://www.search.kumabook.com/kumazawa/html/products/list?mode=books&name={isbn13}",
       "search_alt": "https://www.search.kumabook.com/kumazawa/html/",
       "home": "https://www.kumabook.com/",
       "enabled": true,
@@ -248,76 +248,78 @@
       "prefectures": [
         "全国"
       ],
-      "note": "検索URLは未検証"
+      "note": "検索URLはトップページの検索フォーム（products/list?mode=books&name=）から。この環境からは www.search.kumabook.com への TLS 接続が切られるため未確認"
     },
     {
       "id": "miraiya",
       "name": "未来屋書店（イオン）",
-      "checker": "generic",
-      "search": "https://search.miraiyashoten.co.jp/search?q={code}",
+      "checker": "miraiya",
+      "search": "https://search.miraiyashoten.co.jp/neighborhood/{isbn13}/",
       "search_alt": "https://search.miraiyashoten.co.jp/",
       "home": "https://www.miraiyashoten.co.jp/",
       "enabled": true,
-      "verified": false,
+      "verified": true,
       "stores": [],
       "prefectures": [
         "全国"
       ],
-      "note": "検索URLは未検証"
+      "note": "都道府県ごとの店舗一覧API＋在庫API（ページのJSと同じ）。地域指定時のみ取得"
     },
     {
       "id": "tsutaya",
       "name": "TSUTAYA / 蔦屋書店",
-      "checker": "generic",
-      "search": "https://store-tsutaya.tsite.jp/search/?q={code}",
+      "checker": "tsutaya",
+      "search": "https://store-tsutaya.tsite.jp/search?productkey={jan}",
       "search_alt": "https://store-tsutaya.tsite.jp/search/",
       "home": "https://store-tsutaya.tsite.jp/",
       "enabled": true,
-      "verified": false,
+      "verified": true,
       "stores": [],
       "prefectures": [
         "全国"
       ],
-      "note": "検索URLは未検証"
+      "note": "ISBN/JAN検索→『在庫のある店舗を探す』に住所キーワード（例: 愛知県）で店舗別在庫。地域指定時のみ取得"
     },
     {
       "id": "book1st",
       "name": "ブックファースト",
-      "checker": "generic",
-      "search": "https://b1st.e-netservice.biz/book1stnet/searchbook/?isbn={isbn13}",
+      "checker": "book1st",
+      "search": "https://b1st.e-netservice.biz/book1stnet/searchbook/stock.asp?isbn={isbn13}",
       "search_alt": "https://b1st.e-netservice.biz/book1stnet/searchbook/",
       "home": "https://www.book1st.net/",
       "enabled": true,
-      "verified": false,
+      "verified": true,
       "stores": [],
       "prefectures": [
         "東京",
         "神奈川",
+        "千葉",
+        "埼玉",
         "大阪",
         "兵庫",
         "京都"
       ],
-      "note": "検索URLは未検証"
+      "note": "stock.asp の店舗一覧に対しページのJSと同じく MeRemote.asp へ1店ずつPOST（○△×）。書籍のみ"
     },
     {
       "id": "animate",
       "name": "アニメイト",
-      "checker": "generic",
+      "checker": "animate",
       "search": "https://www.animate-onlineshop.jp/products/list.php?smt={code}",
-      "search_alt": "https://www.animate-onlineshop.jp/sphone/",
+      "search_alt": "https://www.animate-onlineshop.jp/",
       "home": "https://www.animate-onlineshop.jp/",
       "enabled": true,
-      "verified": false,
+      "verified": true,
       "stores": [],
       "prefectures": [
         "全国"
       ],
-      "note": "検索URLは未検証"
+      "note": "商品ページの『店舗在庫を確認』と同じ zaiko.shoptech.jp の在庫API（JANで引く）。『なし～残りわずか』はわずか扱い"
     },
     {
       "id": "bookoff",
       "name": "BOOKOFF（店舗在庫）",
-      "checker": "generic",
+      "checker": "link",
       "search": "https://shopping.bookoff.co.jp/search/keyword/{jan}",
       "home": "https://shopping.bookoff.co.jp/",
       "enabled": true,
@@ -326,7 +328,7 @@
       "prefectures": [
         "全国"
       ],
-      "note": "商品ページの『店舗在庫』で各店の有無を確認"
+      "note": "オンラインストアの在庫は検索結果に出るが、商品ページの店舗入荷情報（モーダル）はどの商品もサーバー側では0店・空で、店舗在庫は取れない"
     },
     {
       "id": "honyaclub",

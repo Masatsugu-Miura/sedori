@@ -1,0 +1,166 @@
+"""サイト固有チェッカーのパーサと流れ（保存した HTML/JSON 断片のみ、ネットワークなし）。"""
+import asyncio
+from pathlib import Path
+
+from bot import codes
+from bot.stores import region_keywords
+from bot.stores.animate import AnimateChecker, parse_stock_table
+from bot.stores.base import CheckResult, Status, StoreConfig, prefs_in_keywords, short_area
+from bot.stores.book1st import Book1stChecker, parse_remote, parse_stock_page
+from bot.stores.kinokuniya import KinokuniyaChecker, parse_stock_view, parse_store_select
+from bot.stores.miraiya import MiraiyaChecker, merge, shops_from_json, stock_status
+from bot.stores.sanseido import SanseidoChecker, parse_stock_list
+from bot.stores.sanyodo import SanyodoChecker, detail_url, parse_detail, parse_shop_areas
+from bot.stores.tsutaya import TsutayaChecker, parse_result, result_url, search_terms, stock_page_url
+
+FIX = Path(__file__).parent / "fixtures"
+BOOK = codes.parse("9784101010014")
+
+
+def fx(name: str) -> str:
+    return (FIX / name).read_text(encoding="utf-8")
+
+
+def run(checker, routes: dict, keywords=None) -> CheckResult:
+    """fetch を差し替えて check を通す。routes は {URLの一部: ファイル名 or (status, 本文)}。"""
+    calls = []
+
+    async def fetch(session, url, data=None, headers=None):
+        calls.append((url, data))
+        for key, v in routes.items():
+            if key in url:
+                return v if isinstance(v, tuple) else (200, fx(v))
+        return 404, ""
+    checker.fetch = fetch
+    res = asyncio.run(checker.check(None, BOOK, keywords))
+    res.calls = calls
+    return res
+
+
+def cfg(id_, checker, search, alt=""):
+    return StoreConfig(id=id_, name=id_, checker=checker, search=search, search_alt=alt)
+
+
+# --- 共通 ---------------------------------------------------------------------
+def test_area_helpers():
+    assert prefs_in_keywords(["愛知", "名古屋", "京都府", "東京"]) == [(23, "愛知県"), (26, "京都府"), (13, "東京都")]
+    assert prefs_in_keywords(region_keywords("地元")) == [(23, "愛知県"), (26, "京都府")]
+    assert short_area("愛知県豊川市馬場町宮脇166") == "愛知・豊川市"
+    assert short_area("京都市左京区高野西開町36") == "京都市"
+    assert "京都" not in short_area("東京都足立区千住旭町42-2")     # 『京都』キーワードに東京の店が混ざらない
+
+
+# --- TSUTAYA -------------------------------------------------------------------
+def test_tsutaya_parsers():
+    url = stock_page_url(fx("tsutaya_item.html"))
+    assert url.startswith("https://store-tsutaya.tsite.jp/search/result/stock?workId=40040093")
+    assert "/stock/result?" in result_url(url, "愛知県") and result_url(url, "愛知県", 2).endswith("dispPageNo=2")
+    stocks, last = parse_result(fx("tsutaya_result.html"), "京都府")
+    assert last == 4
+    got = {s.store: s.status for s in stocks}
+    assert got["六本木 蔦屋書店（京都府）"] == Status.IN_STOCK
+    assert got["TSUTAYA 田町駅前店（京都府）"] == Status.OUT          # 取り扱いがありません
+    assert search_terms(region_keywords("地元")) == ["愛知県", "京都府"]
+    assert search_terms(["新宿"]) == ["新宿"] and search_terms([]) == []
+
+
+def test_tsutaya_flow():
+    c = TsutayaChecker(cfg("tsutaya", "tsutaya", "https://store-tsutaya.tsite.jp/search?productkey={jan}"))
+    res = run(c, {"productkey=": "tsutaya_item.html", "/stock/result": "tsutaya_result.html"}, ["京都"])
+    assert res.status == Status.IN_STOCK and len(res.stocks) == 4
+    assert sum("dispPageNo" in u for u, _ in res.calls) == 2           # 3 ページまで
+    nat = run(TsutayaChecker(c.cfg), {"productkey=": "tsutaya_item.html"})
+    assert nat.status == Status.UNKNOWN and "地域を指定" in nat.message
+    miss = run(TsutayaChecker(c.cfg), {"productkey=": (200, "<html>該当する商品がみつかりませんでした</html>")}, ["京都"])
+    assert miss.status == Status.UNKNOWN and "該当商品" in miss.message
+
+
+# --- ブックファースト ---------------------------------------------------------------
+def test_book1st_parsers():
+    isbn, ids, stores = parse_stock_page(fx("book1st_stock.html"))
+    assert isbn == "4101010013" and ids.startswith(",17,11,") and len(stores) == 22
+    assert stores[0][:2] == (1, "ルミネ北千住店") and stores[20][1] == "アバンティブックセンター洛北店"
+    name, st, mark = parse_remote(fx("book1st_remote.txt"))
+    assert name == "アバンティブックセンター洛北店" and mark in "○△×"
+    assert parse_remote("RTC=0\nMSG=err") is None
+
+
+def test_book1st_flow_area_only_queries_matching_stores():
+    c = Book1stChecker(cfg("book1st", "book1st", "https://b1st.e-netservice.biz/book1stnet/searchbook/stock.asp?isbn={isbn13}"))
+    res = run(c, {"stock.asp": "book1st_stock.html", "MeRemote.asp": "book1st_remote.txt"}, region_keywords("京都"))
+    posts = [d for _, d in res.calls if d]
+    assert [p["cnt"] for p in posts] == ["21"] and posts[0]["maxcnt"] == "22"   # 東京都の店は問い合わせない
+    assert [s.store for s in res.stocks] == ["アバンティブックセンター洛北店（京都市）"]
+
+
+# --- アニメイト -------------------------------------------------------------------
+def test_animate_parser_and_flow():
+    stocks = parse_stock_table(fx("animate_stock.html"))
+    assert any(s.status == Status.IN_STOCK for s in stocks)
+    assert all(s.status in (Status.IN_STOCK, Status.LOW) for s in stocks)      # なし～残りわずか → わずか
+    assert parse_stock_table(fx("animate_none.html")) == []
+    c = AnimateChecker(cfg("animate", "animate", "https://www.animate-onlineshop.jp/products/list.php?smt={code}"))
+    res = run(c, {"list.php": (200, "<html></html>"), "zaiko.shoptech.jp": "animate_none.html"})
+    assert res.status == Status.UNKNOWN and "該当商品" in res.message
+    assert "product_code=9784101010014" in res.calls[1][0]
+
+
+# --- 未来屋 -----------------------------------------------------------------------
+def test_miraiya_parsers_and_flow():
+    shops = shops_from_json(fx("miraiya_shops.json"))
+    assert len(shops) == 3 and shops_from_json('{"count":0}') == []
+    assert [stock_status(n)[0] for n in (5, 1, 0, -1)] == [Status.IN_STOCK, Status.LOW, Status.OUT, Status.UNKNOWN]
+    got = {s.store: s.status for s in merge(shops, fx("miraiya_stock.json"))}
+    assert got["未来屋書店大高（愛知・名古屋市）"] == Status.OUT and got["未来屋書店守山（愛知・名古屋市）"] == Status.LOW
+    c = MiraiyaChecker(cfg("miraiya", "miraiya", "https://search.miraiyashoten.co.jp/neighborhood/{isbn13}/"))
+    res = run(c, {"neighborhoodAPI": "miraiya_shops.json", "stockAPI": "miraiya_stock.json",
+                  "/neighborhood/": (200, "<html></html>")}, region_keywords("愛知"))
+    assert res.status == Status.LOW and res.url.endswith("?pref=23")
+    assert any("prefecture=23" in u for u, _ in res.calls)
+    nat = run(MiraiyaChecker(c.cfg), {"/neighborhood/": (200, "<html></html>")})
+    assert nat.status == Status.UNKNOWN and len(nat.calls) == 1
+
+
+# --- 三洋堂 -----------------------------------------------------------------------
+def test_sanyodo_parsers_and_flow():
+    assert "products-detail?productcode=0100000000000031150624" in detail_url(fx("sanyodo_list.html"))
+    areas = parse_shop_areas(fx("sanyodo_shop.html"))
+    assert areas["豊川店"] == "愛知・豊川市"
+    got = {s.store: s.status for s in parse_detail(fx("sanyodo_detail.html"), areas)}
+    assert got["豊川店（愛知・豊川市）"] == Status.IN_STOCK and got["碧南店（愛知・碧南市）"] == Status.OUT
+    c = SanyodoChecker(cfg("sanyodo", "sanyodo", "https://www.sanyodo.co.jp/lookup/products-list?isbncd={isbn13}&booksearch=1"))
+    res = run(c, {"products-list": "sanyodo_list.html", "products-detail": "sanyodo_detail.html",
+                  "/shop": "sanyodo_shop.html"}, ["豊川"])
+    assert [s.store for s in res.stocks] == ["豊川店（愛知・豊川市）"] and "products-detail" in res.url
+
+
+# --- 三省堂 -----------------------------------------------------------------------
+def test_sanseido_parser_and_flow():
+    got = {s.store: s.status for s in parse_stock_list(fx("sanseido_stock.html"))}
+    assert got["有楽町店"] == Status.OUT and got["名古屋本店"] == Status.IN_STOCK
+    c = SanseidoChecker(cfg("sanseido", "sanseido", "https://www.books-sanseido.jp/booksearch/BookStockList.action?isbn={isbn13}"))
+    res = run(c, {"BookStockList": "sanseido_stock.html"}, region_keywords("愛知"))
+    assert {s.store for s in res.stocks} == {"名古屋本店", "一宮店"}
+    err = run(SanseidoChecker(c.cfg), {"BookStockList": "sanseido_error.html"})
+    assert err.status == Status.UNKNOWN and "該当商品" in err.message
+
+
+# --- 紀伊國屋 ---------------------------------------------------------------------
+def test_kinokuniya_parsers():
+    stores = parse_store_select(fx("kinokuniya_select.html"))
+    assert ("北海道", "札幌本店", "FA") in stores and ("愛知", "mozoワンダーシティ店", "N5") in stores
+    name, st, text = parse_stock_view(fx("kinokuniya_view.html"))
+    assert name == "名古屋空港店" and st == Status.LOW and "在庫僅少" in text
+
+
+def test_kinokuniya_flow_posts_only_area_stores():
+    c = KinokuniyaChecker(cfg("kinokuniya", "kinokuniya",
+                              "https://www.kinokuniya.co.jp/disp/CKnSfStockSearchStoreEncrypt_001.jsp?CAT=01&GOODS_STK_NO={isbn13}"))
+    res = run(c, {"Encrypt_001": "kinokuniya_select.html", "Encrypt_002": "kinokuniya_view.html"}, region_keywords("愛知"))
+    posts = [d for _, d in res.calls if d]
+    assert sorted(k for d in posts for k in d if k.startswith("MAN_ENTR_CD|")) == ["MAN_ENTR_CD|N3", "MAN_ENTR_CD|N5"]
+    assert res.status == Status.LOW and res.stocks[0].store == "名古屋空港店（愛知）"
+    nat = run(KinokuniyaChecker(c.cfg), {"Encrypt_001": "kinokuniya_select.html"})
+    assert nat.status == Status.UNKNOWN and not [d for _, d in nat.calls if d]
+    miss = run(KinokuniyaChecker(c.cfg), {"Encrypt_001": (200, "<html>none</html>")}, ["愛知"])
+    assert "該当商品" in miss.message

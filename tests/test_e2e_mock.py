@@ -1,5 +1,6 @@
 """ローカルの疑似書店サイトでチェッカー全体を通す。"""
 import json
+from pathlib import Path
 
 import pytest
 import pytest_asyncio
@@ -10,9 +11,18 @@ from bot.stores import check_all
 from bot.stores import honto as honto_mod
 from bot.stores.base import Status
 
-KINO = """<html><body><table id="stock"><tr><th>店舗</th><th>在庫</th></tr>
-<tr><td>新宿本店</td><td>在庫あり</td></tr><tr><td>梅田本店</td><td>在庫わずか</td></tr>
-<tr><td>札幌本店</td><td>在庫なし</td></tr></table></body></html>"""
+# 紀伊國屋：店舗選択ページ（保存した断片）→ 1店ずつ POST → 在庫表示
+KINO = (Path(__file__).parent / "fixtures" / "kinokuniya_select.html").read_text(encoding="utf-8")
+KINO_STOCK = {"G2": ("新宿本店", "○&nbsp;在庫あり"), "N3": ("名古屋空港店", "△&nbsp;在庫僅少"), "FA": ("札幌本店", "×&nbsp;在庫なし")}
+
+
+async def kino_post(request):
+    form = await request.post()
+    cd = next(k.split("|", 1)[1] for k in form if k.startswith("MAN_ENTR_CD|"))
+    name, mark = KINO_STOCK.get(cd, ("?", "-"))
+    html = (f'<div class="list_parent2"><ul class="list_h2"><li class="shop_name">{name}</li></ul>'
+            f'<ul class="list_detail2"><li class="address"><B>{mark}</B></li></ul></div>')
+    return web.Response(text=html, content_type="text/html")
 HONTO_SEARCH = '<html><body><a href="/netstore/pd_12345.html">本</a></body></html>'
 HONTO_STORE = """<html><body><ul><li>ジュンク堂書店 池袋本店 在庫あり</li><li>丸善 丸の内本店 在庫わずか</li>
 <li>文教堂 赤羽店 在庫なし</li></ul></body></html>"""
@@ -23,6 +33,7 @@ GENERIC_SJIS = "<html><head><meta charset=\"Shift_JIS\"></head><body><div>横浜
 async def server(tmp_path, monkeypatch):
     app = web.Application()
     app.router.add_get("/kino/{x}", lambda r: web.Response(text=KINO, content_type="text/html"))
+    app.router.add_post("/disp/CKnSfStockSearchStoreEncrypt_002.jsp", kino_post)
     app.router.add_get("/netstore/search_{x}.html", lambda r: web.Response(text=HONTO_SEARCH, content_type="text/html"))
     app.router.add_get("/gen", lambda r: web.Response(body=GENERIC_SJIS.encode("cp932"), content_type="text/html"))
     app.router.add_get("/err", lambda r: web.Response(status=503))
@@ -34,7 +45,7 @@ async def server(tmp_path, monkeypatch):
     port = runner.addresses[0][1]
     base = f"http://127.0.0.1:{port}"
     cfg = {"stores": [
-        {"id": "k", "name": "紀伊國屋(mock)", "checker": "kinokuniya", "search": base + "/kino/{isbn13}", "stores": ["新宿", "梅田"]},
+        {"id": "k", "name": "紀伊國屋(mock)", "checker": "kinokuniya", "search": base + "/kino/{isbn13}", "stores": ["新宿", "名古屋"]},
         {"id": "h", "name": "honto(mock)", "checker": "honto", "search": base + "/netstore/search_10{isbn13}.html"},
         {"id": "g", "name": "generic(mock)", "checker": "generic", "search": base + "/gen"},
         {"id": "e", "name": "error(mock)", "checker": "generic", "search": base + "/err"},
@@ -65,7 +76,8 @@ async def test_all_checkers(server):
     code = codes.parse("9784101010014")
     res = {r.chain_id: r for r in await check_all(code)}
     assert "off" not in res
-    assert res["k"].status == Status.IN_STOCK and [s.store for s in res["k"].stocks] == ["新宿本店", "梅田本店"]
+    assert res["k"].status == Status.IN_STOCK
+    assert [s.store for s in res["k"].stocks] == ["新宿本店（東京）", "名古屋空港店（愛知）"]   # 札幌は問い合わせない
     assert res["h"].status == Status.IN_STOCK and res["h"].url.endswith("pd-store_12345.html")
     assert [s.store for s in res["h"].stocks] == ["ジュンク堂書店 池袋本店", "丸善 丸の内本店", "文教堂 赤羽店"]
     assert res["g"].status == Status.IN_STOCK and {s.store for s in res["g"].stocks} == {"横浜西口店", "藤沢店"}
