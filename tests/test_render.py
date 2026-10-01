@@ -102,3 +102,37 @@ def test_error_and_unverified_rows():
     v = msgs[0][0].fields[0].value
     assert "HTTP 503" in v and "未検証" in v and "https://y" in v
     assert "書誌情報なし" == msgs[0][0].title
+
+
+def test_limits_use_discord_utf16_counting():
+    from bot.render import ulen
+    assert ulen("🟢") == 2 and ulen("在庫") == 2 and ulen("abc") == 3
+    c = codes.parse("9784101010014")
+    # 絵文字だらけの長い店名でも、Discord 流の数え方で 6000 以内に収まるように分割される
+    results = []
+    for i in range(30):
+        r = CheckResult(f"c{i}", "🟢🟡🔴" * 10 + f"チェーン{i}", "https://x",
+                        stocks=[StoreStock("🟢🟡🔴🟢🟡🔴 店舗" + "🟢" * 20 + str(j), Status.IN_STOCK, "在庫あり") for j in range(10)])
+        r.summarize()
+        results.append(r)
+    msgs = build_messages(c, BookMeta(title="t"), results, None, 1.0)
+    for embeds in msgs:
+        assert sum(ulen(e.title or "") + ulen(e.description or "") + (ulen(e.footer.text) if e.footer and e.footer.text else 0)
+                   + sum(ulen(f.name) + ulen(f.value) for f in e.fields) for e in embeds) <= 6000
+        assert all(ulen(f.value) <= 1024 for e in embeds for f in e.fields)
+
+
+def test_messages_stay_under_discord_byte_limit():
+    """日本語だらけの結果は 6000 文字より先に Discord の約 10KB（UTF-8）の壁に当たる。"""
+    from bot.render import _embed_bytes
+    c = codes.parse("9784101010014")
+    results = []
+    for i in range(12):
+        r = CheckResult(f"c{i}", f"書店チェーン{i}", "https://x",
+                        stocks=[StoreStock(f"とても長い日本語の店舗名サンプル{j}（愛知・名古屋市）", Status.IN_STOCK, "在庫あり") for j in range(10)])
+        r.summarize()
+        results.append(r)
+    msgs = build_messages(c, BookMeta(title="吾輩は猫である"), results, None, 1.0)
+    assert len(msgs) >= 2
+    for embeds in msgs:
+        assert sum(_embed_bytes(e) for e in embeds) <= 9200

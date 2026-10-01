@@ -20,6 +20,9 @@ MAX_ROWS = 10           # 1チェーンあたり表示する店舗行（在庫�
 FIELD_LIMIT = 1000
 FIELDS_PER_EMBED = 10
 MESSAGE_CHAR_LIMIT = 5800   # 6000 に対して余裕
+# Discord は文字数とは別に、Embed 本文の UTF-8 バイト数が約 10KB を超えると 413 (Request entity too large) を返す
+# （実測: 『あ』3381 文字＝10143 バイトまで）。日本語は 1 文字 3 バイト、絵文字は 4 バイトなので、こちらの方が先に当たる
+MESSAGE_BYTE_LIMIT = 9200
 REST_FIELD_NAME = "この地域に該当店舗なし／地域外のチェーン"
 OTHER_REGION = "その他"           # 地域分けのとき、どの地域にも振り分けられなかった店
 LINKS_SECTION = "🔗 リンク・要確認"  # 地域分けのとき、店舗行の無いチェーン（リンクのみ／要確認／失敗）をまとめる区画
@@ -96,15 +99,28 @@ def field_value(r: CheckResult, max_rows: int = MAX_ROWS) -> str:
     if r.url:
         lines.append(f"[サイトで確認]({r.url})")
     v = "\n".join(lines)
-    return v if len(v) <= FIELD_LIMIT else v[:FIELD_LIMIT - 1] + "…"
+    while ulen(v) > FIELD_LIMIT:
+        v = v[:-(ulen(v) - FIELD_LIMIT + 1)] + "…"
+    return v
+
+
+def ulen(s: str) -> int:
+    """Discord 流の文字数（UTF-16 の単位）。🟢 などの絵文字は 2 と数えられるので len() では足りない。"""
+    return len(s.encode("utf-16-le")) // 2
+
+
+def _embed_bytes(e: discord.Embed) -> int:
+    parts = [e.title or "", e.description or "", e.footer.text if e.footer and e.footer.text else ""]
+    parts += [f.name or "" for f in e.fields] + [f.value or "" for f in e.fields]
+    return sum(len(p.encode("utf-8")) for p in parts)
 
 
 def _embed_len(e: discord.Embed) -> int:
-    n = len(e.title or "") + len(e.description or "")
+    n = ulen(e.title or "") + ulen(e.description or "")
     if e.footer and e.footer.text:
-        n += len(e.footer.text)
+        n += ulen(e.footer.text)
     for f in e.fields:
-        n += len(f.name or "") + len(f.value or "")
+        n += ulen(f.name or "") + ulen(f.value or "")
     return n
 
 
@@ -200,29 +216,34 @@ def build_messages(code: Code, meta: BookMeta, results: list[CheckResult], area:
     messages: list[list[discord.Embed]] = []
     cur_msg: list[discord.Embed] = []
     cur_len = 0
+    cur_bytes = 0
     cur = header_embed(code, meta, results, area, elapsed, scope_label, graph, groups if area else None)
     rest: list[CheckResult] = []
     if area:
         results, rest = split_for_region(results, serves or {})
 
     def flush_embed() -> None:
-        nonlocal cur, cur_len, cur_msg
+        nonlocal cur, cur_len, cur_bytes, cur_msg
         if cur is not None and (cur.fields or cur.title):
             cur_msg.append(cur)
             cur_len += _embed_len(cur)
+            cur_bytes += _embed_bytes(cur)
         cur = discord.Embed(color=COLOR)
 
     def flush_message() -> None:
-        nonlocal cur_msg, cur_len
+        nonlocal cur_msg, cur_len, cur_bytes
         if cur_msg:
             messages.append(cur_msg)
-        cur_msg, cur_len = [], 0
+        cur_msg, cur_len, cur_bytes = [], 0, 0
 
     def add_field(name: str, value: str) -> None:
         """1 フィールド追加。Embed あたりのフィールド数・メッセージあたりの Embed 数／文字数を超えるなら先に区切る。"""
         if len(cur.fields) >= FIELDS_PER_EMBED:
             flush_embed()
-        if cur_len + _embed_len(cur) + len(name) + len(value) > MESSAGE_CHAR_LIMIT or len(cur_msg) >= 10 - 1 and cur.fields:
+        add_bytes = len(name.encode("utf-8")) + len(value.encode("utf-8"))
+        if (cur_len + _embed_len(cur) + ulen(name) + ulen(value) > MESSAGE_CHAR_LIMIT
+                or cur_bytes + _embed_bytes(cur) + add_bytes > MESSAGE_BYTE_LIMIT
+                or len(cur_msg) >= 10 - 1 and cur.fields):
             flush_embed()
             flush_message()
         cur.add_field(name=name, value=value, inline=False)
@@ -250,7 +271,7 @@ def build_messages(code: Code, meta: BookMeta, results: list[CheckResult], area:
         """行のリストを 1 フィールドに。長ければ同じ見出しで複数フィールドに分ける。"""
         chunk: list[str] = []
         for ln in lines:
-            if chunk and sum(len(x) + 1 for x in chunk) + len(ln) > FIELD_LIMIT:
+            if chunk and sum(ulen(x) + 1 for x in chunk) + ulen(ln) > FIELD_LIMIT:
                 add_field(name, "\n".join(chunk))
                 chunk = []
             chunk.append(ln)
