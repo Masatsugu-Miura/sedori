@@ -48,18 +48,24 @@ def build(cfg: StoreConfig) -> Checker:
     return cls(cfg)
 
 
+def known_ids() -> set[str]:
+    return {c.id for c in load_configs()}
+
+
 async def check_all(code: Code, area: Optional[str] = None, only: Optional[set[str]] = None,
                     concurrency: int = 6) -> list[CheckResult]:
-    cfgs = [c for c in load_configs() if c.enabled and (not only or c.id in only)]
+    # only 指定時は無効チェーンも明示指定なら対象にする
+    cfgs = [c for c in load_configs() if (c.id in only if only else c.enabled)]
     sem = asyncio.Semaphore(concurrency)
-    connector = aiohttp.TCPConnector(limit=concurrency, ssl=False)
+    connector = aiohttp.TCPConnector(limit=concurrency)
     async with aiohttp.ClientSession(connector=connector, cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
         async def run(cfg: StoreConfig) -> CheckResult:
             async with sem:
                 try:
-                    return await asyncio.wait_for(build(cfg).check(session, code, area), timeout=25)
+                    return await asyncio.wait_for(build(cfg).check(session, code, area), timeout=20)
                 except asyncio.TimeoutError:
-                    return CheckResult(chain_id=cfg.id, chain=cfg.name, url=code.fill(cfg.search) or cfg.home,
+                    return CheckResult(chain_id=cfg.id, chain=cfg.name,
+                                       url=code.fill(cfg.search) or code.fill(cfg.search_alt) or cfg.home,
                                        status=Status.ERROR, message="タイムアウト", verified=cfg.verified)
         results = await asyncio.gather(*(run(c) for c in cfgs))
     results.sort(key=lambda r: (r.status.rank, r.chain))

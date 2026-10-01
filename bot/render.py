@@ -1,5 +1,11 @@
-"""検索結果を Discord の Embed にまとめる。"""
+"""検索結果を Discord の Embed にまとめる。
+
+Discord の制限: 1メッセージ 10 Embed まで、Embed 内の文字数合計は 1メッセージあたり 6000 まで、
+field.value は 1024 まで。ここでは複数メッセージに分割して必ず制限内に収める。
+"""
 from __future__ import annotations
+
+from typing import Optional
 
 import discord
 
@@ -7,59 +13,95 @@ from .codes import Code
 from .lookup import BookMeta
 from .stores.base import CheckResult, Status
 
-MAX_ROWS = 8          # 1チェーンあたり表示する店舗行
+COLOR = 0xF2B134
+MAX_ROWS = 8            # 1チェーンあたり表示する店舗行
 FIELD_LIMIT = 1000
-FIELDS_PER_EMBED = 12
+FIELDS_PER_EMBED = 10
+MESSAGE_CHAR_LIMIT = 5800   # 6000 に対して余裕
+LEGEND = "🟢在庫あり 🟡わずか 🔴なし ⚪要確認 🔗リンク ⚠️失敗"
 
 
-def _field_value(r: CheckResult) -> str:
+def field_value(r: CheckResult, max_rows: int = MAX_ROWS) -> str:
     lines: list[str] = []
     if r.stocks:
-        for s in r.stocks[:MAX_ROWS]:
+        for s in r.stocks[:max_rows]:
             note = f"（{s.note}）" if s.note and s.note != s.status.text else ""
             lines.append(f"{s.status.emoji} {s.store}{note}")
-        if len(r.stocks) > MAX_ROWS:
-            lines.append(f"…他 {len(r.stocks) - MAX_ROWS} 店")
+        if len(r.stocks) > max_rows:
+            lines.append(f"…他 {len(r.stocks) - max_rows} 店（リンク先で全件）")
     elif r.message:
         lines.append(r.message)
     if not r.verified:
         lines.append("※検索URL未検証（開けない場合は stores.json を修正）")
-    lines.append(f"[サイトで確認]({r.url})" if r.url else "")
-    v = "\n".join(l for l in lines if l)
-    return v[:FIELD_LIMIT - 1] + "…" if len(v) > FIELD_LIMIT else v
+    if r.url:
+        lines.append(f"[サイトで確認]({r.url})")
+    v = "\n".join(lines)
+    return v if len(v) <= FIELD_LIMIT else v[:FIELD_LIMIT - 1] + "…"
 
 
-def build_embeds(code: Code, meta: BookMeta, results: list[CheckResult], area: str | None,
-                 elapsed: float) -> list[discord.Embed]:
+def _embed_len(e: discord.Embed) -> int:
+    n = len(e.title or "") + len(e.description or "")
+    if e.footer and e.footer.text:
+        n += len(e.footer.text)
+    for f in e.fields:
+        n += len(f.name or "") + len(f.value or "")
+    return n
+
+
+def header_embed(code: Code, meta: BookMeta, results: list[CheckResult], area: Optional[str],
+                 elapsed: float) -> discord.Embed:
     counts = {s: 0 for s in Status}
     for r in results:
         counts[r.status] += 1
-    summary = (f"🟢 {counts[Status.IN_STOCK]}  🟡 {counts[Status.LOW]}  🔴 {counts[Status.OUT]}  "
-               f"⚪ {counts[Status.UNKNOWN]}  🔗 {counts[Status.LINK]}  ⚠️ {counts[Status.ERROR]}")
-
-    title = meta.title or "書誌情報なし"
-    desc_lines = [code.label()]
+    summary = "  ".join(f"{s.emoji} {counts[s]}" for s in
+                        (Status.IN_STOCK, Status.LOW, Status.OUT, Status.UNKNOWN, Status.LINK, Status.ERROR))
+    lines = [code.label()]
     if meta.author or meta.publisher:
-        desc_lines.append(" / ".join(x for x in (meta.author, meta.publisher) if x))
+        lines.append(" / ".join(x for x in (meta.author, meta.publisher) if x))
     if meta.price:
-        desc_lines.append(meta.price)
+        lines.append(meta.price)
     if area:
-        desc_lines.append(f"エリア絞り込み: **{area}**")
-    desc_lines.append(summary)
-    for n in code.notes:
-        desc_lines.append(f"ℹ️ {n}")
-
-    first = discord.Embed(title=title[:250], description="\n".join(desc_lines)[:4000], color=0xF2B134)
+        lines.append(f"エリア絞り込み: **{area}**")
+    lines.append(summary)
+    lines += [f"ℹ️ {n}" for n in code.notes]
+    e = discord.Embed(title=(meta.title or "書誌情報なし")[:250], description="\n".join(lines)[:2000], color=COLOR)
     if meta.cover:
-        first.set_thumbnail(url=meta.cover)
-    first.set_footer(text=f"せどりDESK 在庫チェック  •  {len(results)}店 / {elapsed:.1f}s  •  "
-                          "🟢在庫あり 🟡わずか 🔴なし ⚪要確認 🔗リンク ⚠️失敗")
+        e.set_thumbnail(url=meta.cover)
+    e.set_footer(text=f"せどりDESK 在庫チェック • {len(results)}店 / {elapsed:.1f}s • {LEGEND}")
+    return e
 
-    embeds = [first]
-    cur = first
+
+def build_messages(code: Code, meta: BookMeta, results: list[CheckResult], area: Optional[str],
+                   elapsed: float) -> list[list[discord.Embed]]:
+    """Embed を複数メッセージに分けて返す。各メッセージは 10 Embed / 約6000 文字以内。"""
+    messages: list[list[discord.Embed]] = []
+    cur_msg: list[discord.Embed] = []
+    cur_len = 0
+    cur = header_embed(code, meta, results, area, elapsed)
+
+    def flush_embed() -> None:
+        nonlocal cur, cur_len, cur_msg
+        if cur is not None and (cur.fields or cur.title):
+            cur_msg.append(cur)
+            cur_len += _embed_len(cur)
+        cur = discord.Embed(color=COLOR)
+
+    def flush_message() -> None:
+        nonlocal cur_msg, cur_len
+        if cur_msg:
+            messages.append(cur_msg)
+        cur_msg, cur_len = [], 0
+
     for r in results:
+        name = f"{r.status.emoji} {r.chain}"[:256]
+        value = field_value(r) or "-"
+        add = len(name) + len(value)
         if len(cur.fields) >= FIELDS_PER_EMBED:
-            cur = discord.Embed(color=0xF2B134)
-            embeds.append(cur)
-        cur.add_field(name=f"{r.status.emoji} {r.chain}"[:256], value=_field_value(r) or "-", inline=False)
-    return embeds[:10]
+            flush_embed()
+        if cur_len + _embed_len(cur) + add > MESSAGE_CHAR_LIMIT or len(cur_msg) >= 10 - 1 and cur.fields:
+            flush_embed()
+            flush_message()
+        cur.add_field(name=name, value=value, inline=False)
+    flush_embed()
+    flush_message()
+    return messages

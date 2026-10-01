@@ -99,7 +99,9 @@ def extract_candidate(text: str) -> Optional[str]:
     cleaned = _clean(text)
     if re.fullmatch(r"B[0-9A-Z]{9}|\d{13}|\d{8}|\d{9}[\dX]", cleaned):
         return cleaned
-    m = _CODE_IN_TEXT.search(text)
+    # 978-4-10-101001-4 のようなハイフン区切りをつなげてから探す
+    joined = re.sub(r"(?<=\d)[\-‐‑–—](?=[\dXx])", "", text)
+    m = _CODE_IN_TEXT.search(joined)
     return m.group(1).upper() if m else None
 
 
@@ -140,3 +142,32 @@ def parse(text: str) -> Code:
         return c
 
     return c
+
+
+_PLACEHOLDER = re.compile(r"\{(isbn13|isbn10|jan|asin|code)\}|%s")
+
+
+def has_placeholder(url: str) -> bool:
+    return bool(_PLACEHOLDER.search(url))
+
+
+def templatize_url(url: str) -> str:
+    """検索URLにコードがそのまま入っている場合（例: ...?q=9784088820002）をプレースホルダに置き換える。
+    すでに {isbn13} 等があればそのまま返す。"""
+    url = url.strip()
+    if not url or has_placeholder(url):
+        return url
+    # 直前に数字が付くURL（honto の search_10{isbn13} など）もあるので、位置をずらしながら正しい ISBN-13 を探す
+    for m in re.finditer(r"(?=(97[89]\d{10}))", url):
+        if is_valid_ean13(m.group(1)) and not re.match(r"\d", url[m.start() + 13:m.start() + 14]):
+            return url[:m.start()] + "{isbn13}" + url[m.start() + 13:]
+    m = re.search(r"(?<![0-9A-Za-z])(B[0-9A-Z]{9})(?![0-9A-Za-z])", url)
+    if m:
+        return url[:m.start()] + "{asin}" + url[m.end():]
+    m = re.search(r"(?<!\d)(\d{9}[\dX])(?![\dA-Za-z])", url)
+    if m and is_valid_isbn10(m.group(1)):
+        return url[:m.start()] + "{isbn10}" + url[m.end():]
+    m = re.search(r"(?<!\d)(\d{13})(?!\d)", url)
+    if m and is_valid_ean13(m.group(1)):
+        return url[:m.start()] + "{jan}" + url[m.end():]
+    return url
