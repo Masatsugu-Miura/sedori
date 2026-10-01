@@ -1,5 +1,7 @@
 """honto（丸善・ジュンク堂・文教堂・戸田書店 ほか）
 検索 https://honto.jp/netstore/search_10{isbn13}.html → 商品ID → 店舗在庫 https://honto.jp/netstore/pd-store_{id}.html
+※ honto の紙の本ストアは丸善ジュンク堂ネットストア（maruzenjunkudo.co.jp）に移管され、現在 netstore の検索は
+   電子書籍（/ebook/）に転送、pd-store_ は 404 になる。丸善・ジュンク堂の店舗在庫は maruzenjunkudo.py を使う。
 """
 from __future__ import annotations
 

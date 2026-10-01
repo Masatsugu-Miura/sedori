@@ -17,10 +17,13 @@ from .book1st import Book1stChecker
 from .generic import GenericChecker, LinkOnlyChecker
 from .honto import HontoChecker
 from .kinokuniya import KinokuniyaChecker
+from .kumazawa import KumazawaChecker
+from .maruzenjunkudo import MaruzenJunkudoChecker
 from .miraiya import MiraiyaChecker
 from .sanseido import SanseidoChecker
 from .sanyodo import SanyodoChecker
 from .tsutaya import TsutayaChecker
+from .yurindo import YurindoChecker
 
 CHECKERS: dict[str, type[Checker]] = {
     "generic": GenericChecker,
@@ -33,6 +36,9 @@ CHECKERS: dict[str, type[Checker]] = {
     "miraiya": MiraiyaChecker,
     "sanyodo": SanyodoChecker,
     "sanseido": SanseidoChecker,
+    "maruzenjunkudo": MaruzenJunkudoChecker,
+    "yurindo": YurindoChecker,
+    "kumazawa": KumazawaChecker,
 }
 
 ROOT = Path(__file__).resolve().parents[2]

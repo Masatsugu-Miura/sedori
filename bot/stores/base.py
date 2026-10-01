@@ -194,12 +194,29 @@ def rows_to_stocks(soup: BeautifulSoup, selector: str) -> list[StoreStock]:
     return dedupe(out)
 
 
+_LABEL_PREF = re.compile(r"（([^（）・]+?)(?:・[^（）]*)?）\s*$")
+
+
+def label_pref(store: str) -> str:
+    """店名に添えた地域ラベル『（愛知・豊川市）』『（神奈川・小田原市）』から都道府県（短縮形）を返す。無ければ空。"""
+    m = _LABEL_PREF.search(store)
+    if not m:
+        return ""
+    p = m.group(1)
+    return p if any(p == pref_short(full) for full in PREFECTURES) else ""
+
+
 def filter_stores(stocks: list[StoreStock], wanted: list[str], keywords: Optional[list[str]]) -> list[StoreStock]:
     res = stocks
     if wanted:
         res = [s for s in res if any(w in s.store for w in wanted)]
     if keywords:
-        res = [s for s in res if any(k in s.store for k in keywords)]
+        # 地域キーワードに都道府県が含まれていて、店のラベルにも都道府県があるなら、県が違う店は弾く
+        # （愛知のキーワード『田原』が『小田原店（神奈川・小田原市）』に部分一致するのを防ぐ）
+        prefs = {pref_short(p) for _, p in prefs_in_keywords(keywords)}
+        res = [s for s in res
+               if any(k in s.store for k in keywords)
+               and (not prefs or not label_pref(s.store) or label_pref(s.store) in prefs)]
     return res
 
 

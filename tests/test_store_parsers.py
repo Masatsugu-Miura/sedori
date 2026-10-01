@@ -1,21 +1,32 @@
 """サイト固有チェッカーのパーサと流れ（保存した HTML/JSON 断片のみ、ネットワークなし）。"""
 import asyncio
+import json
 from pathlib import Path
 from urllib.parse import quote
 
 from bot import codes
 from bot.stores import kinokuniya as kinokuniya_mod
+from bot.stores import maruzenjunkudo as mj
 from bot.stores import miraiya as miraiya_mod
 from bot.stores import region_keywords
 from bot.stores import tsutaya as tsutaya_mod
+from bot.stores import yurindo
 from bot.stores.animate import AnimateChecker, parse_stock_table
 from bot.stores.base import CheckResult, Status, StoreConfig, prefs_in_keywords, short_area
 from bot.stores.book1st import Book1stChecker, parse_remote, parse_stock_page
 from bot.stores.kinokuniya import KinokuniyaChecker, parse_stock_view, parse_store_select
+from bot.stores.kumazawa import KumazawaChecker
+from bot.stores.kumazawa import detail_url as kumazawa_detail_url
+from bot.stores.kumazawa import parse_detail as kumazawa_detail
+from bot.stores.maruzenjunkudo import MaruzenJunkudoChecker, parse_locations
+from bot.stores.maruzenjunkudo import merge as mj_merge
 from bot.stores.miraiya import MiraiyaChecker, merge, shops_from_json, stock_status
 from bot.stores.sanseido import SanseidoChecker, parse_stock_list
 from bot.stores.sanyodo import SanyodoChecker, detail_url, parse_detail, parse_shop_areas
 from bot.stores.tsutaya import TsutayaChecker, parse_result, result_url, search_terms, stock_page_url
+from bot.stores.yurindo import YurindoChecker, decode, decode_response, encode
+from bot.stores.yurindo import merge as yurindo_merge
+from bot.stores.yurindo import query as yurindo_query
 
 FIX = Path(__file__).parent / "fixtures"
 BOOK = codes.parse("9784101010014")
@@ -204,3 +215,64 @@ def test_kinokuniya_nationwide_posts_every_store(monkeypatch):
     c.cfg.stores = ["新宿"]
     only = run(KinokuniyaChecker(c.cfg), {"Encrypt_001": "kinokuniya_select.html", "Encrypt_002": "kinokuniya_view.html"})
     assert [k for _, d in only.calls if d for k in d if k.startswith("MAN_ENTR_CD|")] == ["MAN_ENTR_CD|G2"]
+
+
+# --- 丸善ジュンク堂 ---------------------------------------------------------------
+def test_maruzenjunkudo_parsers_and_flow():
+    mj._LOC_CACHE.clear()
+    locs = parse_locations(fx("maruzenjunkudo_locations.json"))
+    assert locs["70144"] == ("丸善 京都本店", "京都・京都市") and locs["70031"] == ("ジュンク堂書店 名古屋店", "愛知・名古屋市")
+    assert locs["72000"][1] == "東京・千代田区" and locs["70142"] == ("淳久堂書店 明曜店(台湾)", "")
+    assert "70999" not in locs                                            # 在庫検索非対応の店は除く
+    got = {s.store: s.status for s in mj_merge(locs, fx("maruzenjunkudo_stock.json"))}
+    assert got == {"ジュンク堂書店 名古屋店（愛知・名古屋市）": Status.OUT, "丸善 京都本店（京都・京都市）": Status.IN_STOCK,
+                   "丸善 丸の内本店（東京・千代田区）": Status.LOW, "淳久堂書店 明曜店(台湾)": Status.LOW}   # 一覧に無い 70003 は捨てる
+    c = MaruzenJunkudoChecker(cfg("maruzenjunkudo", "maruzenjunkudo", "https://www.maruzenjunkudo.co.jp/products/{isbn13}"))
+    routes = {"api-item-info": "maruzenjunkudo_stock.json", "listLocations": "maruzenjunkudo_locations.json"}
+    res = run(c, routes, region_keywords("地元"))
+    assert res.status == Status.IN_STOCK and res.url == "https://www.maruzenjunkudo.co.jp/products/9784101010014"
+    assert [s.store for s in res.stocks] == ["ジュンク堂書店 名古屋店（愛知・名古屋市）", "丸善 京都本店（京都・京都市）"]   # 東京の店は『京都』に掛からない
+    assert any("jan_isbn=9784101010014" in u for u, _ in res.calls) and not any("/products/" in u for u, _ in res.calls)
+    nat = run(MaruzenJunkudoChecker(c.cfg), routes)
+    assert len(nat.stocks) == 4 and not any("listLocations" in u for u, _ in nat.calls)      # 店舗一覧はプロセス内キャッシュ
+    miss = run(MaruzenJunkudoChecker(c.cfg), {**routes, "api-item-info": (200, "[]")})
+    assert miss.status == Status.UNKNOWN and "該当商品" in miss.message
+
+
+# --- 有隣堂 -----------------------------------------------------------------------
+def test_yurindo_codec_and_flow():
+    yurindo._STORE_CACHE.clear()
+    raw = '{"code":"9784101010014","code_seq":0}'
+    assert decode(encode(raw)) == raw and encode("a b") == "g1h"                 # URL エンコード（空白→'+'）してから文字コード +6
+    assert json.loads(yurindo_query({"code": "9784101010014", "code_seq": 0})) == {"q": encode(raw)}
+    stores = decode_response(fx("yurindo_stores.txt"))
+    assert [s["code"] for s in stores] == ["210", "480", "420"]
+    item = decode_response(fx("yurindo_item.txt"))
+    assert item["name"] == "吾輩は猫である 改版"
+    got = {s.store: s.status for s in yurindo_merge(stores, item)}
+    assert got == {"伊勢佐木町本店（神奈川・横浜市）": Status.LOW, "セレオ八王子店（東京・八王子市）": Status.IN_STOCK,
+                   "アトレ川崎店（神奈川・川崎市）": Status.OUT}                       # store_data_list に無い店は在庫なし
+    assert decode_response('""') is None and decode_response("") is None
+    c = YurindoChecker(cfg("yurindo", "yurindo", "https://search.yurindo.bscentral.jp/item?ic={isbn13}"))
+    routes = {"search-public/stores": "yurindo_stores.txt", "items/_get": "yurindo_item.txt"}
+    res = run(c, routes, ["横浜"])
+    assert res.status == Status.LOW and [s.store for s in res.stocks] == ["伊勢佐木町本店（神奈川・横浜市）"]
+    posts = {u.rsplit("/", 1)[1]: d for u, d in res.calls if d is not None}
+    assert posts["stores"] == "null" and json.loads(posts["_get"]) == {"q": encode(raw)}
+    assert res.url == "https://search.yurindo.bscentral.jp/item?ic=9784101010014"
+    miss = run(YurindoChecker(c.cfg), {**routes, "items/_get": (200, '""')})
+    assert miss.status == Status.UNKNOWN and "該当商品" in miss.message and not any("stores" in u for u, _ in miss.calls)
+
+
+# --- くまざわ書店（本番 HTML 未確認の想定パーサ） ------------------------------------------
+def test_kumazawa_parsers_and_flow():
+    assert kumazawa_detail_url(fx("kumazawa_list.html")).startswith(
+        "https://www.search.kumabook.com/kumazawa/html/products/detail/9087930?mode=books")
+    assert kumazawa_detail_url("<html>該当する商品がありません</html>") == ""
+    got = {s.store: s.status for s in kumazawa_detail(fx("kumazawa_detail.html"))}
+    assert got == {"くまざわ書店 名古屋店": Status.IN_STOCK, "くまざわ書店 京都店": Status.OUT, "くまざわ書店 八王子店": Status.LOW}
+    c = KumazawaChecker(cfg("kumazawa", "kumazawa", "https://www.search.kumabook.com/kumazawa/html/products/list?mode=books&name={isbn13}"))
+    res = run(c, {"products/list": "kumazawa_list.html", "products/detail": "kumazawa_detail.html"}, region_keywords("愛知"))
+    assert [s.store for s in res.stocks] == ["くまざわ書店 名古屋店"] and "products/detail/9087930" in res.url
+    miss = run(KumazawaChecker(c.cfg), {"products/list": (200, "<html><body><p>該当する商品がありません</p></body></html>")})
+    assert miss.status == Status.UNKNOWN and "該当商品" in miss.message

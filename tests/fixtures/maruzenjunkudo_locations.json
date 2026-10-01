@@ -1,0 +1,19 @@
+{"locations": {"edges": [
+ {"node": {"id": "gid://shopify/Location/1", "name": "丸善 京都本店",
+   "address": {"address1": "中京区河原町通三条下ル山崎町251", "address2": "京都BAL 地下1階～地下2階", "city": "京都市", "country": "Japan", "province": "Kyōto", "zip": "604-8032"},
+   "metafields": {"edges": [{"node": {"key": "store_name", "value": "丸善"}}, {"node": {"key": "store_pickup_availability", "value": "1"}},
+     {"node": {"key": "operating_status", "value": "1"}}, {"node": {"key": "code", "value": "70144"}},
+     {"node": {"key": "store_inventory_search_availability", "value": "1"}}]}}},
+ {"node": {"id": "gid://shopify/Location/2", "name": "ジュンク堂書店 名古屋店",
+   "address": {"address1": "中村区名駅3-25-9", "address2": "堀内ビル1階", "city": "名古屋市", "country": "Japan", "province": "Aichi", "zip": "450-0002"},
+   "metafields": {"edges": [{"node": {"key": "code", "value": "70031"}}, {"node": {"key": "store_inventory_search_availability", "value": "1"}}]}}},
+ {"node": {"id": "gid://shopify/Location/3", "name": "丸善 丸の内本店",
+   "address": {"address1": "丸の内1-6-4", "address2": "丸の内オアゾ1階～4階", "city": "千代田区", "country": "Japan", "province": "Tōkyō", "zip": "100-8203"},
+   "metafields": {"edges": [{"node": {"key": "code", "value": "72000"}}, {"node": {"key": "store_inventory_search_availability", "value": "1"}}]}}},
+ {"node": {"id": "gid://shopify/Location/4", "name": "淳久堂書店 明曜店(台湾)",
+   "address": {"address1": "忠孝東路四段200號", "address2": "明曜百貨９F", "city": "Taipei City", "country": "Taiwan", "province": null, "zip": "106"},
+   "metafields": {"edges": [{"node": {"key": "code", "value": "70142"}}, {"node": {"key": "store_inventory_search_availability", "value": "1"}}]}}},
+ {"node": {"id": "gid://shopify/Location/5", "name": "丸善 在庫検索非対応店",
+   "address": {"address1": "x", "address2": "", "city": "大阪市", "country": "Japan", "province": "Ōsaka", "zip": "530-0001"},
+   "metafields": {"edges": [{"node": {"key": "code", "value": "70999"}}, {"node": {"key": "store_inventory_search_availability", "value": "0"}}]}}}
+]}}

@@ -55,6 +55,18 @@ def test_filter_by_store_and_area():
     assert filter_stores(stocks, ["池袋"], "赤羽") == []
 
 
+def test_area_filter_respects_prefecture_label():
+    from bot.stores.base import StoreStock
+    stocks = [StoreStock("豊川店（愛知・豊川市）", Status.IN_STOCK),
+              StoreStock("ラスカ小田原店（神奈川・小田原市）", Status.IN_STOCK),   # 『田原』に部分一致するが県が違う
+              StoreStock("函館栄好堂", Status.IN_STOCK),                        # ラベル無しは従来どおり文字一致
+              StoreStock("名古屋本店", Status.IN_STOCK)]
+    got = [s.store for s in filter_stores(stocks, [], ["愛知", "名古屋", "田原", "栄"])]
+    assert got == ["豊川店（愛知・豊川市）", "函館栄好堂", "名古屋本店"]
+    # 都道府県を含まないキーワード（地名だけ）ならラベルで弾かない
+    assert [s.store for s in filter_stores(stocks, [], ["小田原"])] == ["ラスカ小田原店（神奈川・小田原市）"]
+
+
 def test_decode_html_sjis_and_meta():
     sjis = "<html><head><meta charset=\"Shift_JIS\"></head><body>新宿本店 在庫あり</body></html>".encode("cp932")
     assert "新宿本店 在庫あり" in decode_html(sjis, None)
