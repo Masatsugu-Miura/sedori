@@ -5,36 +5,65 @@ field.value は 1024 まで。ここでは複数メッセージに分割して�
 """
 from __future__ import annotations
 
+import re
 from typing import Optional
 
 import discord
 
 from .codes import Code
 from .lookup import BookMeta
-from .stores.base import CheckResult, Status
+from .stores.base import CheckResult, Status, StoreStock
 
 COLOR = 0xF2B134
-MAX_ROWS = 8            # 1チェーンあたり表示する店舗行
+MAX_ROWS = 10           # 1チェーンあたり表示する店舗行（在庫あり・わずか の店だけ）
 FIELD_LIMIT = 1000
 FIELDS_PER_EMBED = 10
 MESSAGE_CHAR_LIMIT = 5800   # 6000 に対して余裕
 REST_FIELD_NAME = "この地域に該当店舗なし／地域外のチェーン"
-LEGEND ="🟢在庫あり 🟡わずか 🔴なし ⚪要確認 🔗リンク ⚠️失敗"
+LEGEND = "🟢在庫あり 🟡わずか 🔴なし ⚪要確認 🔗リンク ⚠️失敗"
+# Keepa の価格・ランキング推移グラフ（画像）。本の ASIN が分かるときにヘッダーに貼る
+KEEPA_GRAPH = ("https://graph.keepa.com/pricehistory.png?asin={asin}&domain=co.jp"
+               "&width=800&height=300&range=365&salesrank=1&amazon=1&new=1&used=1")
+SHOWN = (Status.IN_STOCK, Status.LOW)   # 店舗行として出す状態（在庫なしの店は件数だけ）
+
+_COUNT = re.compile(r"(\d+)\s*[点冊個]|(?:残り|在庫数)[:：]?\s*(\d+)")
+_LABEL = re.compile(r"（([^（）]+)）\s*$")
+
+
+def store_label(s: StoreStock) -> str:
+    """店名の表記をチェーン間で揃える: 『店名（県・市）』＋在庫数が分かれば『 ×N』。
+    『（愛知県）』は『（愛知）』に、注記の生テキスト（○ / あり / 在庫あり 6点 …）は出さない。"""
+    name = s.store
+    m = _LABEL.search(name)
+    if m:
+        parts = m.group(1).split("・")
+        if len(parts[0]) > 2 and parts[0].endswith(("県", "府", "都")):
+            parts[0] = parts[0][:-1]
+        name = name[:m.start()] + "（" + "・".join(parts) + "）"
+    c = _COUNT.search(s.note or "")
+    n = next((g for g in c.groups() if g), None) if c else None
+    return f"{name} ×{n}" if n else name
+
+
+def stock_summary(stocks: list[StoreStock]) -> str:
+    counts = {st: sum(1 for s in stocks if s.status == st) for st in Status}
+    return (f"🟢{counts[Status.IN_STOCK]} 🟡{counts[Status.LOW]} 🔴{counts[Status.OUT]}"
+            f"（確認 {len(stocks)}店）")
 
 
 def field_value(r: CheckResult, max_rows: int = MAX_ROWS) -> str:
+    """どのチェーンも同じ並び: 1行目に件数、在庫あり→わずか の店だけ行で、残りは件数、最後にリンク。"""
     lines: list[str] = []
     if r.stocks:
-        # 行数に収まらないとき（全国指定で数十〜数百店）は在庫あり→わずか→…の順に並べ、残りは状態別の件数にまとめる
-        stocks = r.stocks if len(r.stocks) <= max_rows else sorted(r.stocks, key=lambda s: s.status.rank)
-        for s in stocks[:max_rows]:
-            note = f"（{s.note}）" if s.note and s.note != s.status.text else ""
-            lines.append(f"{s.status.emoji} {s.store}{note}")
-        if len(stocks) > max_rows:
-            rest = stocks[max_rows:]
-            counts = " ".join(f"{st.emoji}{n}" for st in (Status.IN_STOCK, Status.LOW, Status.OUT, Status.UNKNOWN)
-                              if (n := sum(1 for s in rest if s.status == st)))
-            lines.append(f"…他 {len(rest)} 店（{counts}）リンク先で全件")
+        lines.append(stock_summary(r.stocks))
+        shown = [s for s in r.stocks if s.status in SHOWN]
+        shown.sort(key=lambda s: s.status.rank)      # 🟢 → 🟡（同じ状態の中は元の順）
+        for s in shown[:max_rows]:
+            lines.append(f"{s.status.emoji} {store_label(s)}")
+        if len(shown) > max_rows:
+            lines.append(f"…他 {len(shown) - max_rows}店はリンク先で")
+        if not shown:
+            lines.append("在庫あり店舗なし")
     elif r.message:
         lines.append(r.message)
     if not r.verified:
@@ -59,20 +88,26 @@ def header_embed(code: Code, meta: BookMeta, results: list[CheckResult], area: O
     counts = {s: 0 for s in Status}
     for r in results:
         counts[r.status] += 1
-    summary = "  ".join(f"{s.emoji} {counts[s]}" for s in
-                        (Status.IN_STOCK, Status.LOW, Status.OUT, Status.UNKNOWN, Status.LINK, Status.ERROR))
+    chains = "  ".join(f"{s.emoji} {counts[s]}" for s in
+                       (Status.IN_STOCK, Status.LOW, Status.OUT, Status.UNKNOWN, Status.LINK, Status.ERROR))
+    stores = [s for r in results for s in r.stocks]
+    n_in = sum(1 for s in stores if s.status == Status.IN_STOCK)
+    n_low = sum(1 for s in stores if s.status == Status.LOW)
     lines = [code.label()]
     if meta.author or meta.publisher:
         lines.append(" / ".join(x for x in (meta.author, meta.publisher) if x))
     if meta.price:
         lines.append(meta.price)
     lines.append(f"検索範囲: **{scope_label}**" + (f"（店名に {area} 系の地名を含む店舗）" if area else ""))
-    lines.append(summary)
+    lines.append(f"**在庫あり店舗 {n_in + n_low}店**（🟢{n_in} 🟡{n_low}）／ 確認 {len(stores)}店")
+    lines.append(f"チェーン: {chains}")
     lines += [f"ℹ️ {n}" for n in code.notes]
     e = discord.Embed(title=(meta.title or "書誌情報なし")[:250], description="\n".join(lines)[:2000], color=COLOR)
     if meta.cover:
         e.set_thumbnail(url=meta.cover)
-    e.set_footer(text=f"せどりDESK 在庫チェック • {len(results)}店 / {elapsed:.1f}s • {LEGEND}")
+    if code.asin:
+        e.set_image(url=KEEPA_GRAPH.format(asin=code.asin))   # 波形（価格・ランキング推移）
+    e.set_footer(text=f"せどりDESK 在庫チェック • {len(results)}チェーン / {elapsed:.1f}s • {LEGEND}")
     return e
 
 

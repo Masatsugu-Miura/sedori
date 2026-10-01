@@ -55,12 +55,36 @@ def test_long_store_list_shows_in_stock_first_and_counts_rest():
     r.summarize()
     v = build_messages(c, BookMeta(), [r], None, 1.0)[0][0].fields[0].value
     rows = v.split("\n")
-    assert rows[0].startswith("🟢 新宿本店") and rows[1].startswith("🟢 梅田本店") and rows[2].startswith("🟡 店0")
-    assert rows[8] == "…他 64 店（🟡54 🔴10）リンク先で全件" and len(v) <= 1024
-    # 行数に収まるときは元の順のまま
-    short = CheckResult("k", "紀伊國屋", "https://k", stocks=stocks[60:63])
-    v2 = build_messages(c, BookMeta(), [short], None, 1.0)[0][0].fields[0].value
-    assert v2.split("\n")[0].startswith("🔴 札幌本店") and "…他" not in v2
+    assert rows[0] == "🟢2 🟡60 🔴10（確認 72店）"
+    assert rows[1] == "🟢 新宿本店" and rows[2] == "🟢 梅田本店" and rows[3] == "🟡 店0"
+    assert rows[11] == "…他 52店はリンク先で" and rows[12].startswith("[サイトで確認]") and len(v) <= 1024
+    assert "札幌本店" not in v      # 在庫なしの店は行に出さない
+    # 在庫あり店舗が無いチェーン
+    none = CheckResult("k", "紀伊國屋", "https://k", stocks=stocks[60:61])
+    none.summarize()
+    v2 = build_messages(c, BookMeta(), [none], None, 1.0)[0][0].fields[0].value
+    assert v2.split("\n")[:2] == ["🟢0 🟡0 🔴1（確認 1店）", "在庫あり店舗なし"]
+
+
+def test_store_label_is_unified_across_chains():
+    from bot.render import store_label
+    assert store_label(StoreStock("TSUTAYA 大曽根店（愛知県）", Status.IN_STOCK, "在庫あり")) == "TSUTAYA 大曽根店（愛知）"
+    assert store_label(StoreStock("丸善 京都本店（京都・京都市）", Status.IN_STOCK, "在庫あり 6点")) == "丸善 京都本店（京都・京都市） ×6"
+    assert store_label(StoreStock("丸善 名古屋本店（愛知・名古屋市）", Status.LOW, "残り2点")) == "丸善 名古屋本店（愛知・名古屋市） ×2"
+    assert store_label(StoreStock("名古屋本店", Status.IN_STOCK, "○")) == "名古屋本店"
+    assert store_label(StoreStock("札幌店（北海道）", Status.IN_STOCK, "あり")) == "札幌店（北海道）"
+    assert store_label(StoreStock("洛北店（京都市）", Status.LOW, "△")) == "洛北店（京都市）"
+
+
+def test_header_has_keepa_graph_and_store_totals():
+    c = codes.parse("9784101010014")
+    msgs = build_messages(c, BookMeta(title="t"), _results(2, 3), None, 1.0)
+    e = msgs[0][0]
+    assert e.image.url and "graph.keepa.com" in e.image.url and "asin=4101010013" in e.image.url
+    assert "在庫あり店舗 6店" in e.description
+    jan = codes.parse("4902370519884")     # 本以外の JAN は ASIN が無いのでグラフ無し
+    e2 = build_messages(jan, BookMeta(), [], None, 1.0)[0][0]
+    assert not e2.image.url
 
 
 def test_error_and_unverified_rows():
