@@ -1,7 +1,7 @@
 """紀伊國屋書店：商品ページ（/f/dsg-01-{isbn13}）には店舗在庫の表は無く、「店の在庫を確認・取置」ボタンから
   CKnSfStockSearchStoreEncrypt_001.jsp?CAT=01&GOODS_STK_NO={isbn13}  → 店舗選択ページ（都道府県ごとの店舗とボタン）
   CKnSfStockSearchStoreEncrypt_002.jsp に 1 店ずつ POST            → その店の在庫（○ 在庫あり / △ 在庫僅少 / × …）
-と進む。店舗が 70 以上あるので、地域・店舗指定があるときだけ該当店に問い合わせる。
+と進む。地域・店舗指定があるときは該当店（最大 MAX_STORES 店）だけ、全国指定では全店（70 店余り、4 本並行で約 20 秒）に問い合わせる。
 """
 from __future__ import annotations
 
@@ -13,11 +13,12 @@ import aiohttp
 from bs4 import BeautifulSoup
 
 from ..codes import Code
-from .base import AREA_ONLY_MSG, Checker, CheckResult, Status, StoreStock, classify
+from .base import Checker, CheckResult, Status, StoreStock, classify
 
 POST_URL = "https://www.kinokuniya.co.jp/disp/CKnSfStockSearchStoreEncrypt_002.jsp"
-PARALLEL = 3
-MAX_STORES = 12
+PARALLEL = 4               # 同一サイトへ同時に投げる数（check_all の connector 上限と同じ）
+MAX_STORES = 12            # 地域・店舗指定時
+MAX_STORES_NATIONAL = 100  # 全国指定時（現状 72 店。店舗が極端に増えても打ち切る安全弁）
 
 
 def parse_store_select(html: str) -> list[tuple[str, str, str]]:
@@ -64,13 +65,13 @@ class KinokuniyaChecker(Checker):
             res.message = "紀伊國屋の店舗在庫検索に該当商品がありません"
             return []
         wanted = self.cfg.stores + self.keywords
-        if not wanted:
-            res.message = AREA_ONLY_MSG + "。リンク先で店を選べます"
-            return []
-        stores = [s for s in stores if any(w in s[0] or w in s[1] for w in wanted)][:MAX_STORES]
-        if not stores:
-            res.message = "指定地域に紀伊國屋書店の店舗がありません"
-            return []
+        if wanted:
+            stores = [s for s in stores if any(w in s[0] or w in s[1] for w in wanted)][:MAX_STORES]
+            if not stores:
+                res.message = "指定地域に紀伊國屋書店の店舗がありません"
+                return []
+        else:
+            stores = stores[:MAX_STORES_NATIONAL]   # 全国：全店に 1 店ずつ問い合わせる
         isbn = code.isbn13 or code.jan or ""
         target = post_url(html, res.url)
         # フォームのあるページ（店舗選択）を Referer にしないと在庫表示が 404 になる

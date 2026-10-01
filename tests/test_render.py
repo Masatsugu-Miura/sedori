@@ -46,6 +46,23 @@ def test_large_result_splits_within_limits():
     _total(msgs)
 
 
+def test_long_store_list_shows_in_stock_first_and_counts_rest():
+    c = codes.parse("9784101010014")
+    stocks = [StoreStock(f"店{j}", Status.LOW, "在庫僅少") for j in range(60)]
+    stocks += [StoreStock("札幌本店", Status.OUT, "在庫なし"), StoreStock("新宿本店", Status.IN_STOCK, "在庫あり"),
+               StoreStock("梅田本店", Status.IN_STOCK, "在庫あり")] + [StoreStock(f"店x{j}", Status.OUT, "在庫なし") for j in range(9)]
+    r = CheckResult("k", "紀伊國屋", "https://k", stocks=stocks)
+    r.summarize()
+    v = build_messages(c, BookMeta(), [r], None, 1.0)[0][0].fields[0].value
+    rows = v.split("\n")
+    assert rows[0].startswith("🟢 新宿本店") and rows[1].startswith("🟢 梅田本店") and rows[2].startswith("🟡 店0")
+    assert rows[8] == "…他 64 店（🟡54 🔴10）リンク先で全件" and len(v) <= 1024
+    # 行数に収まるときは元の順のまま
+    short = CheckResult("k", "紀伊國屋", "https://k", stocks=stocks[60:63])
+    v2 = build_messages(c, BookMeta(), [short], None, 1.0)[0][0].fields[0].value
+    assert v2.split("\n")[0].startswith("🔴 札幌本店") and "…他" not in v2
+
+
 def test_error_and_unverified_rows():
     c = codes.parse("B0C1234XYZ")
     r = CheckResult("h", "honto", "https://y", status=Status.ERROR, message="HTTP 503", verified=False)

@@ -25,11 +25,16 @@ LEGEND ="🟢在庫あり 🟡わずか 🔴なし ⚪要確認 🔗リンク �
 def field_value(r: CheckResult, max_rows: int = MAX_ROWS) -> str:
     lines: list[str] = []
     if r.stocks:
-        for s in r.stocks[:max_rows]:
+        # 行数に収まらないとき（全国指定で数十〜数百店）は在庫あり→わずか→…の順に並べ、残りは状態別の件数にまとめる
+        stocks = r.stocks if len(r.stocks) <= max_rows else sorted(r.stocks, key=lambda s: s.status.rank)
+        for s in stocks[:max_rows]:
             note = f"（{s.note}）" if s.note and s.note != s.status.text else ""
             lines.append(f"{s.status.emoji} {s.store}{note}")
-        if len(r.stocks) > max_rows:
-            lines.append(f"…他 {len(r.stocks) - max_rows} 店（リンク先で全件）")
+        if len(stocks) > max_rows:
+            rest = stocks[max_rows:]
+            counts = " ".join(f"{st.emoji}{n}" for st in (Status.IN_STOCK, Status.LOW, Status.OUT, Status.UNKNOWN)
+                              if (n := sum(1 for s in rest if s.status == st)))
+            lines.append(f"…他 {len(rest)} 店（{counts}）リンク先で全件")
     elif r.message:
         lines.append(r.message)
     if not r.verified:

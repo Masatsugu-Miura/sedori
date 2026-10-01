@@ -46,6 +46,7 @@ async def server(tmp_path, monkeypatch):
     base = f"http://127.0.0.1:{port}"
     cfg = {"stores": [
         {"id": "k", "name": "紀伊國屋(mock)", "checker": "kinokuniya", "search": base + "/kino/{isbn13}", "stores": ["新宿", "名古屋"]},
+        {"id": "kall", "name": "紀伊國屋全店(mock)", "checker": "kinokuniya", "search": base + "/kino/{isbn13}"},
         {"id": "h", "name": "honto(mock)", "checker": "honto", "search": base + "/netstore/search_10{isbn13}.html"},
         {"id": "g", "name": "generic(mock)", "checker": "generic", "search": base + "/gen"},
         {"id": "e", "name": "error(mock)", "checker": "generic", "search": base + "/err"},
@@ -78,6 +79,9 @@ async def test_all_checkers(server):
     assert "off" not in res
     assert res["k"].status == Status.IN_STOCK
     assert [s.store for s in res["k"].stocks] == ["新宿本店（東京）", "名古屋空港店（愛知）"]   # 札幌は問い合わせない
+    # 店舗フィルタ無し＋全国 → 全店に POST（在庫表記を返さない店は行にならない）
+    assert res["kall"].status == Status.IN_STOCK
+    assert [s.store for s in res["kall"].stocks] == ["札幌本店（北海道）", "新宿本店（東京）", "名古屋空港店（愛知）"]
     assert res["h"].status == Status.IN_STOCK and res["h"].url.endswith("pd-store_12345.html")
     assert [s.store for s in res["h"].stocks] == ["ジュンク堂書店 池袋本店", "丸善 丸の内本店", "文教堂 赤羽店"]
     assert res["g"].status == Status.IN_STOCK and {s.store for s in res["g"].stocks} == {"横浜西口店", "藤沢店"}

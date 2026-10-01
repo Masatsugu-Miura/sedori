@@ -14,6 +14,9 @@ def test_classify_priority():
     assert classify("在庫数 12") == Status.IN_STOCK
     assert classify("○") == Status.IN_STOCK and classify("△") == Status.LOW and classify("×") == Status.OUT
     assert classify("送料無料") == Status.UNKNOWN
+    # 在庫を示していない案内文は「在庫あり」を含んでいても要確認（TSUTAYA）
+    assert classify("こちらの商品は在庫あり店舗をご確認いただけません") == Status.UNKNOWN
+    assert classify("在庫確認対象外") == Status.UNKNOWN
 
 
 def test_store_name_keeps_branch():

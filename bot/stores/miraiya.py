@@ -2,7 +2,8 @@
 ページ /neighborhood/{isbn13}/?pref={JIS} の JS が
   /neighborhoodAPI/?isbn=..&prefecture=..  → 店舗一覧(JSON)
   /stockAPI/?isbn=..&storecodes=a,b,..     → {店コード: 在庫数}（3以上=あり / 1-2=僅少 / 0=なし / 負=取置不可）
-を呼んでいるので同じ順で取る。都道府県単位なので全国指定では取得しない。
+を呼んでいるので同じ順で取る。店舗一覧は都道府県単位なので、全国指定では 47 都道府県ぶん（4 本並行で約 5 秒）取り、
+在庫は全店コードをまとめて 1 回で引く（prefecture 無しだと既定地域の近隣店しか返らない）。
 """
 from __future__ import annotations
 
@@ -12,9 +13,11 @@ import json
 import aiohttp
 
 from ..codes import Code
-from .base import (AREA_ONLY_MSG, Checker, CheckResult, Status, StoreStock, prefs_in_keywords, short_area)
+from .base import (PREFECTURES, Checker, CheckResult, Status, StoreStock, prefs_in_keywords, short_area)
 
 BASE = "https://search.miraiyashoten.co.jp"
+PARALLEL = 4
+STOCK_CHUNK = 200   # stockAPI に一度に渡す店コード数（全国 195 店で URL 約 1KB。増えたら分割）
 
 
 def shops_from_json(text: str) -> list[dict]:
@@ -66,16 +69,28 @@ class MiraiyaChecker(Checker):
             res.message = "書籍（ISBN）のみ検索できます"
             return []
         prefs = prefs_in_keywords(self.keywords)
-        if not prefs:
-            res.message = AREA_ONLY_MSG
-            return []
-        res.url = f"{BASE}/neighborhood/{isbn}/?pref={prefs[0][0]}"
-        lists = await asyncio.gather(*(self.fetch(session, f"{BASE}/neighborhoodAPI/?isbn={isbn}&prefecture={c}")
-                                       for c, _ in prefs), return_exceptions=True)
-        shops = [s for r in lists if isinstance(r, tuple) and r[0] < 400 for s in shops_from_json(r[1])]
+        if prefs:
+            res.url = f"{BASE}/neighborhood/{isbn}/?pref={prefs[0][0]}"
+        else:
+            prefs = list(enumerate(PREFECTURES, 1))   # 全国：47 都道府県すべて
+            res.url = f"{BASE}/neighborhood/{isbn}/"
+        sem = asyncio.Semaphore(PARALLEL)
+
+        async def shops_of(pref_code: int) -> list[dict]:
+            async with sem:
+                status, text = await self.fetch(session, f"{BASE}/neighborhoodAPI/?isbn={isbn}&prefecture={pref_code}")
+            return shops_from_json(text) if status < 400 else []
+
+        lists = await asyncio.gather(*(shops_of(c) for c, _ in prefs), return_exceptions=True)
+        shops = [s for r in lists if isinstance(r, list) for s in r]
         if not shops:
             res.message = "指定地域に未来屋書店の店舗が見つかりません"
             return []
-        codes = ",".join(str(s["shop_code"]) for s in shops) + ","
-        status, text = await self.fetch(session, f"{BASE}/stockAPI/?isbn={isbn}&storecodes={codes}")
-        return merge(shops, text) if status < 400 else []
+        out: list[StoreStock] = []
+        for i in range(0, len(shops), STOCK_CHUNK):
+            chunk = shops[i:i + STOCK_CHUNK]
+            codes = ",".join(str(s["shop_code"]) for s in chunk) + ","
+            status, text = await self.fetch(session, f"{BASE}/stockAPI/?isbn={isbn}&storecodes={codes}")
+            if status < 400:
+                out += merge(chunk, text)
+        return out

@@ -37,6 +37,8 @@ CHECKERS: dict[str, type[Checker]] = {
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_PATH = ROOT / "stores.json"
+# 1 チェーンあたりの上限秒。全国指定で紀伊國屋（72 店 POST ≒ 20 秒）・TSUTAYA（約 33 ページ ≒ 50 秒、自前の打ち切りあり）が収まる値
+CHAIN_TIMEOUT = 75
 
 
 def stores_path() -> Path:
@@ -126,7 +128,7 @@ async def check_all(code: Code, area: Optional[str] = None, only: Optional[set[s
         async def run(cfg: StoreConfig) -> CheckResult:
             async with sem:
                 try:
-                    return await asyncio.wait_for(build(cfg).check(session, code, keywords), timeout=20)
+                    return await asyncio.wait_for(build(cfg).check(session, code, keywords), timeout=CHAIN_TIMEOUT)
                 except asyncio.TimeoutError:
                     return CheckResult(chain_id=cfg.id, chain=cfg.name,
                                        url=code.fill(cfg.search) or code.fill(cfg.search_alt) or cfg.home,

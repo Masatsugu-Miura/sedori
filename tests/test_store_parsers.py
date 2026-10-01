@@ -1,9 +1,13 @@
 """サイト固有チェッカーのパーサと流れ（保存した HTML/JSON 断片のみ、ネットワークなし）。"""
 import asyncio
 from pathlib import Path
+from urllib.parse import quote
 
 from bot import codes
+from bot.stores import kinokuniya as kinokuniya_mod
+from bot.stores import miraiya as miraiya_mod
 from bot.stores import region_keywords
+from bot.stores import tsutaya as tsutaya_mod
 from bot.stores.animate import AnimateChecker, parse_stock_table
 from bot.stores.base import CheckResult, Status, StoreConfig, prefs_in_keywords, short_area
 from bot.stores.book1st import Book1stChecker, parse_remote, parse_stock_page
@@ -69,10 +73,23 @@ def test_tsutaya_flow():
     res = run(c, {"productkey=": "tsutaya_item.html", "/stock/result": "tsutaya_result.html"}, ["京都"])
     assert res.status == Status.IN_STOCK and len(res.stocks) == 4
     assert sum("dispPageNo" in u for u, _ in res.calls) == 2           # 3 ページまで
-    nat = run(TsutayaChecker(c.cfg), {"productkey=": "tsutaya_item.html"})
-    assert nat.status == Status.UNKNOWN and "地域を指定" in nat.message
     miss = run(TsutayaChecker(c.cfg), {"productkey=": (200, "<html>該当する商品がみつかりませんでした</html>")}, ["京都"])
     assert miss.status == Status.UNKNOWN and "該当商品" in miss.message
+
+
+def test_tsutaya_nationwide_sweeps_all_terms_and_pages(monkeypatch):
+    c = TsutayaChecker(cfg("tsutaya", "tsutaya", "https://store-tsutaya.tsite.jp/search?productkey={jan}"))
+    nat = run(c, {"productkey=": "tsutaya_item.html", "/stock/result": "tsutaya_result.html"})
+    pages = [u for u, _ in nat.calls if "/stock/result" in u]
+    assert len(pages) == len(tsutaya_mod.NATIONAL_TERMS) * 4                  # 各語とも最終ページ(4)まで取る
+    assert {quote(t) for t in tsutaya_mod.NATIONAL_TERMS} <= {u.split("storeSearchKeyword=")[1].split("&")[0] for u in pages}
+    assert nat.status == Status.IN_STOCK and [s.store for s in nat.stocks][:2] == ["TSUTAYA 田町駅前店", "SHARE LOUNGE 神谷町駅前"]
+    assert len(nat.stocks) == 4 and not nat.message                           # 地域ラベル無し・重複除去・全ページ取得
+    assert nat.url.endswith("productKey=9784101010014")                       # リンクは店舗検索ページのまま
+    monkeypatch.setattr(tsutaya_mod, "NATIONAL_MAX_PAGES", 6)
+    capped = run(TsutayaChecker(c.cfg), {"productkey=": "tsutaya_item.html", "/stock/result": "tsutaya_result.html"})
+    assert sum("/stock/result" in u for u, _ in capped.calls) == 6 and "未取得" in capped.message
+    assert capped.status == Status.IN_STOCK
 
 
 # --- ブックファースト ---------------------------------------------------------------
@@ -117,8 +134,15 @@ def test_miraiya_parsers_and_flow():
                   "/neighborhood/": (200, "<html></html>")}, region_keywords("愛知"))
     assert res.status == Status.LOW and res.url.endswith("?pref=23")
     assert any("prefecture=23" in u for u, _ in res.calls)
-    nat = run(MiraiyaChecker(c.cfg), {"/neighborhood/": (200, "<html></html>")})
-    assert nat.status == Status.UNKNOWN and len(nat.calls) == 0
+    assert [u for u, _ in res.calls if "neighborhoodAPI" in u] == [f"{miraiya_mod.BASE}/neighborhoodAPI/?isbn=9784101010014&prefecture=23"]
+    # 全国：47 都道府県の一覧を引き、在庫は全店コードをまとめて 1 回
+    nat = run(MiraiyaChecker(c.cfg), {"neighborhoodAPI": "miraiya_shops.json", "stockAPI": "miraiya_stock.json"})
+    lists = [u for u, _ in nat.calls if "neighborhoodAPI" in u]
+    assert len(lists) == 47 and {u.rsplit("=", 1)[1] for u in lists} == {str(i) for i in range(1, 48)}
+    assert sum("stockAPI" in u for u, _ in nat.calls) == 1 and nat.status == Status.LOW
+    assert nat.url.endswith("/neighborhood/9784101010014/") and len(nat.stocks) == 3 * 47
+    none = run(MiraiyaChecker(c.cfg), {"neighborhoodAPI": (200, '{"count":0}')})
+    assert none.status == Status.UNKNOWN and "見つかりません" in none.message
 
 
 # --- 三洋堂 -----------------------------------------------------------------------
@@ -160,7 +184,23 @@ def test_kinokuniya_flow_posts_only_area_stores():
     posts = [d for _, d in res.calls if d]
     assert sorted(k for d in posts for k in d if k.startswith("MAN_ENTR_CD|")) == ["MAN_ENTR_CD|N3", "MAN_ENTR_CD|N5"]
     assert res.status == Status.LOW and res.stocks[0].store == "名古屋空港店（愛知）"
-    nat = run(KinokuniyaChecker(c.cfg), {"Encrypt_001": "kinokuniya_select.html"})
-    assert nat.status == Status.UNKNOWN and not [d for _, d in nat.calls if d]
     miss = run(KinokuniyaChecker(c.cfg), {"Encrypt_001": (200, "<html>none</html>")}, ["愛知"])
     assert "該当商品" in miss.message
+
+
+def test_kinokuniya_nationwide_posts_every_store(monkeypatch):
+    c = KinokuniyaChecker(cfg("kinokuniya", "kinokuniya",
+                              "https://www.kinokuniya.co.jp/disp/CKnSfStockSearchStoreEncrypt_001.jsp?CAT=01&GOODS_STK_NO={isbn13}"))
+    stores = parse_store_select(fx("kinokuniya_select.html"))
+    nat = run(c, {"Encrypt_001": "kinokuniya_select.html", "Encrypt_002": "kinokuniya_view.html"})
+    posted = sorted(k.split("|", 1)[1] for _, d in nat.calls if d for k in d if k.startswith("MAN_ENTR_CD|"))
+    assert posted == sorted(cd for _, _, cd in stores) and len(posted) == 6
+    assert nat.status == Status.LOW and len(nat.stocks) == 6
+    assert {s.store.split("（")[1] for s in nat.stocks} == {f"{p}）" for p, _, _ in stores}   # 店名に都道府県を添える
+    monkeypatch.setattr(kinokuniya_mod, "MAX_STORES_NATIONAL", 2)                       # 安全弁
+    capped = run(KinokuniyaChecker(c.cfg), {"Encrypt_001": "kinokuniya_select.html", "Encrypt_002": "kinokuniya_view.html"})
+    assert len([d for _, d in capped.calls if d]) == 2
+    # 店舗フィルタ（cfg.stores）があれば全国でもその店だけ
+    c.cfg.stores = ["新宿"]
+    only = run(KinokuniyaChecker(c.cfg), {"Encrypt_001": "kinokuniya_select.html", "Encrypt_002": "kinokuniya_view.html"})
+    assert [k for _, d in only.calls if d for k in d if k.startswith("MAN_ENTR_CD|")] == ["MAN_ENTR_CD|G2"]
