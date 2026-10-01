@@ -113,6 +113,24 @@ def home_regions(path: Optional[Path] = None) -> list[str]:
     return list(load_settings(path)["home_regions"])
 
 
+def region_groups(area: Optional[str], path: Optional[Path] = None) -> dict[str, list[str]]:
+    """『地元』『愛知,京都』のように複数地域をまとめて検索するとき、表示を地域ごとに分けるための
+    {地域名: キーワード群}。単一地域や未指定なら {}（分けない）。"""
+    if not area:
+        return {}
+    settings = load_settings(path)
+    names: list[str] = []
+    for n in (a.strip() for a in re.split(r"[、,/／\s+]+", area) if a.strip()):
+        if n in ("地元", "home", "local"):
+            names += settings["home_regions"]
+        else:
+            names.append(n[:-1] if n.endswith(("県", "府", "都", "道")) and n[:-1] in settings["regions"] else n)
+    names = [n for i, n in enumerate(names) if n not in names[:i]]
+    if len(names) < 2:
+        return {}
+    return {n: region_keywords(n, path) for n in names}
+
+
 def build(cfg: StoreConfig) -> Checker:
     cls = CHECKERS.get(cfg.checker, GenericChecker)
     return cls(cfg)

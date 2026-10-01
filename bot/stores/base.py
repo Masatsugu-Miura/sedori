@@ -203,7 +203,23 @@ def label_pref(store: str) -> str:
     if not m:
         return ""
     p = m.group(1)
+    if p in PREFECTURES:                      # 『（東京都）』のような正式名も短縮形に
+        return pref_short(p)
     return p if any(p == pref_short(full) for full in PREFECTURES) else ""
+
+
+def assign_region(store: str, groups: dict[str, list[str]]) -> Optional[str]:
+    """店名（＋地域ラベル）がどの地域グループに属するか。ラベルの都道府県を優先し、無ければ地名キーワードで判定。"""
+    lp = label_pref(store)
+    if lp:
+        for name in groups:
+            if lp == name or lp == pref_short(name) or name == pref_short(lp):
+                return name
+        return None
+    for name, kws in groups.items():
+        if any(k in store for k in kws):
+            return name
+    return None
 
 
 def filter_stores(stocks: list[StoreStock], wanted: list[str], keywords: Optional[list[str]]) -> list[StoreStock]:

@@ -6,13 +6,14 @@ field.value は 1024 まで。ここでは複数メッセージに分割して�
 from __future__ import annotations
 
 import re
+from dataclasses import replace
 from typing import Optional
 
 import discord
 
 from .codes import Code
 from .lookup import GRAPH_FILENAME, BookMeta
-from .stores.base import CheckResult, Status, StoreStock
+from .stores.base import CheckResult, Status, StoreStock, assign_region
 
 COLOR = 0xF2B134
 MAX_ROWS = 10           # 1チェーンあたり表示する店舗行（在庫あり・わずか の店だけ）
@@ -20,6 +21,8 @@ FIELD_LIMIT = 1000
 FIELDS_PER_EMBED = 10
 MESSAGE_CHAR_LIMIT = 5800   # 6000 に対して余裕
 REST_FIELD_NAME = "この地域に該当店舗なし／地域外のチェーン"
+OTHER_REGION = "その他"           # 地域分けのとき、どの地域にも振り分けられなかった店
+LINKS_SECTION = "🔗 リンク・要確認"  # 地域分けのとき、店舗行の無いチェーン（リンクのみ／要確認／失敗）をまとめる区画
 LEGEND = "🟢在庫あり 🟡わずか 🔴なし ⚪要確認 🔗リンク ⚠️失敗"
 SHOWN = (Status.IN_STOCK, Status.LOW)   # 店舗行として出す状態（在庫なしの店は件数だけ）
 
@@ -80,8 +83,28 @@ def _embed_len(e: discord.Embed) -> int:
     return n
 
 
+def split_by_region(results: list[CheckResult], groups: dict[str, list[str]]) -> dict[str, list[CheckResult]]:
+    """店舗行のあるチェーンを地域ごとに分ける。各地域にはその地域の店だけを持つ CheckResult のコピーを入れる。"""
+    out: dict[str, list[CheckResult]] = {name: [] for name in groups}
+    out[OTHER_REGION] = []
+    for r in results:
+        if not r.stocks:
+            continue
+        buckets: dict[str, list[StoreStock]] = {}
+        for s in r.stocks:
+            buckets.setdefault(assign_region(s.store, groups) or OTHER_REGION, []).append(s)
+        for name, stocks in buckets.items():
+            rr = replace(r, stocks=stocks, message="")
+            rr.summarize()
+            out[name].append(rr)
+    for name in out:
+        out[name].sort(key=lambda r: (r.status.rank, r.chain))
+    return {name: rs for name, rs in out.items() if rs}
+
+
 def header_embed(code: Code, meta: BookMeta, results: list[CheckResult], area: Optional[str],
-                 elapsed: float, scope_label: str = "全国", graph: Optional[bytes] = None) -> discord.Embed:
+                 elapsed: float, scope_label: str = "全国", graph: Optional[bytes] = None,
+                 groups: Optional[dict[str, list[str]]] = None) -> discord.Embed:
     counts = {s: 0 for s in Status}
     for r in results:
         counts[r.status] += 1
@@ -97,6 +120,15 @@ def header_embed(code: Code, meta: BookMeta, results: list[CheckResult], area: O
         lines.append(meta.price)
     lines.append(f"検索範囲: **{scope_label}**" + (f"（店名に {area} 系の地名を含む店舗）" if area else ""))
     lines.append(f"**在庫あり店舗 {n_in + n_low}店**（🟢{n_in} 🟡{n_low}）／ 確認 {len(stores)}店")
+    if groups:
+        # 地域ごとの内訳（愛知 🟢3 🟡12 ／ 京都 🟢1 🟡2）
+        parts = []
+        for name, rs in split_by_region(results, groups).items():
+            ss = [s for r in rs for s in r.stocks]
+            parts.append(f"{name} 🟢{sum(1 for s in ss if s.status == Status.IN_STOCK)}"
+                         f" 🟡{sum(1 for s in ss if s.status == Status.LOW)}")
+        if parts:
+            lines.append(" ／ ".join(parts))
     lines.append(f"チェーン: {chains}")
     lines += [f"ℹ️ {n}" for n in code.notes]
     e = discord.Embed(title=(meta.title or "書誌情報なし")[:250], description="\n".join(lines)[:2000], color=COLOR)
@@ -131,14 +163,17 @@ def split_for_region(results: list[CheckResult], serves: dict[str, bool]) -> tup
 def build_messages(code: Code, meta: BookMeta, results: list[CheckResult], area: Optional[str],
                    elapsed: float, scope_label: str = "全国",
                    serves: Optional[dict[str, bool]] = None,
-                   graph: Optional[bytes] = None) -> list[list[discord.Embed]]:
+                   graph: Optional[bytes] = None,
+                   groups: Optional[dict[str, list[str]]] = None) -> list[list[discord.Embed]]:
     """Embed を複数メッセージに分けて返す。各メッセージは 10 Embed / 約6000 文字以内。
     area 指定時（地域モード）は該当のあるチェーンだけを個別表示し、残りは1つのフィールドにまとめる。
+    groups（地元＝愛知・京都のように複数地域）があれば『📍 愛知』『📍 京都』の区画に分けて、
+    各チェーンの店をそれぞれの地域側に振り分ける（店が多くても埋もれないように）。
     graph（Keepa の PNG）があれば先頭 Embed の画像にし、送る側は最初のメッセージにその PNG を添付する。"""
     messages: list[list[discord.Embed]] = []
     cur_msg: list[discord.Embed] = []
     cur_len = 0
-    cur = header_embed(code, meta, results, area, elapsed, scope_label, graph)
+    cur = header_embed(code, meta, results, area, elapsed, scope_label, graph, groups if area else None)
     rest: list[CheckResult] = []
     if area:
         results, rest = split_for_region(results, serves or {})
@@ -165,8 +200,24 @@ def build_messages(code: Code, meta: BookMeta, results: list[CheckResult], area:
             flush_message()
         cur.add_field(name=name, value=value, inline=False)
 
-    for r in results:
-        add_field(f"{r.status.emoji} {r.chain}"[:256], field_value(r) or "-")
+    def start_section(title: str) -> None:
+        """『📍 愛知』のような見出し付きの Embed を新しく始める。"""
+        flush_embed()
+        cur.title = title
+
+    if area and groups and len(groups) >= 2:
+        for name, rs in split_by_region(results, groups).items():
+            start_section(f"📍 {name}")
+            for r in rs:
+                add_field(f"{r.status.emoji} {r.chain}"[:256], field_value(r) or "-")
+        others = [r for r in results if not r.stocks]
+        if others:
+            start_section(LINKS_SECTION)
+            for r in others:
+                add_field(f"{r.status.emoji} {r.chain}"[:256], field_value(r) or "-")
+    else:
+        for r in results:
+            add_field(f"{r.status.emoji} {r.chain}"[:256], field_value(r) or "-")
     if rest:
         chunk: list[str] = []
         for ln in (compact_line(r) for r in rest):
