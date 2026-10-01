@@ -4,9 +4,9 @@ bot のトークンやサーバー招待なしで、見た目と各書店の読�
 
 使い方:
   .env に DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/... を書いてから
-  python scripts/webhook_test.py 9784101010014            # 全国
-  python scripts/webhook_test.py 9784101010014 地元       # 地元（愛知・京都）
-  python scripts/webhook_test.py 9784101010014 京都
+  python scripts/webhook_test.py 9784101010014            # 地元（愛知・京都）＝既定
+  python scripts/webhook_test.py 9784101010014 全国       # 全国
+  python scripts/webhook_test.py 9784101010014 京都       # 地域名
   python scripts/webhook_test.py 9784101010014 --dry      # 投稿せず結果を画面に出すだけ
 """
 from __future__ import annotations
@@ -37,11 +37,12 @@ async def main() -> None:
     code = codes.parse(args[0])
     if not code.valid:
         raise SystemExit("コードを認識できませんでした")
-    area = args[1] if len(args) > 1 else None
-    label = "全国"
+    area = args[1] if len(args) > 1 else "地元"   # 指定なしは地元（愛知・京都）
     if area in ("地元", "local", "home"):
         area, label = "地元", "地元"
-    elif area:
+    elif area in ("全国", "all", "zenkoku"):
+        area, label = None, "全国"
+    else:
         label = area
 
     started = time.perf_counter()
