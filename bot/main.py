@@ -116,7 +116,7 @@ async def run_search(text: str, area: Optional[str] = None, only: Optional[str] 
 
     async with _search_gate:
         started = time.perf_counter()
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(trust_env=True) as session:
             if code.kind == "ASIN" and not code.isbn13:
                 await resolve_asin(session, code)
             meta = await fetch_meta(session, code)

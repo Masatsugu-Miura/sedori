@@ -94,7 +94,8 @@ async def check_all(code: Code, area: Optional[str] = None, only: Optional[set[s
     cfgs = [c for c in load_configs() if (c.id in only if only else c.enabled)]
     sem = asyncio.Semaphore(concurrency)
     connector = aiohttp.TCPConnector(limit=concurrency)
-    async with aiohttp.ClientSession(connector=connector, cookie_jar=aiohttp.CookieJar(unsafe=True)) as session:
+    async with aiohttp.ClientSession(connector=connector, cookie_jar=aiohttp.CookieJar(unsafe=True),
+                                     trust_env=True) as session:
         async def run(cfg: StoreConfig) -> CheckResult:
             async with sem:
                 try:

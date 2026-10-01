@@ -45,7 +45,7 @@ async def main() -> None:
         label = area
 
     started = time.perf_counter()
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(trust_env=True) as session:
         if code.kind == "ASIN" and not code.isbn13:
             await resolve_asin(session, code)
         meta = await fetch_meta(session, code)
@@ -64,7 +64,7 @@ async def main() -> None:
     url = os.environ.get("DISCORD_WEBHOOK_URL", "")
     if not url.startswith("https://discord.com/api/webhooks/"):
         raise SystemExit("DISCORD_WEBHOOK_URL が .env にありません（Discord のチャンネル設定 → 連携サービス → ウェブフック）")
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(trust_env=True) as session:
         for embeds in messages:
             payload = {"username": "せどりDESK 在庫チェック", "embeds": [e.to_dict() for e in embeds]}
             async with session.post(url + "?wait=true", json=payload) as r:
