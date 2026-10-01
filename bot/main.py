@@ -1,6 +1,7 @@
 """Discord bot 本体。
 
-  /zaiko code:<ASIN or JAN> [area:<地域名>] [stores:<id,id>]
+  /zaiko code:<ASIN or JAN> [area:<地域名>] [stores:<id,id>]   … 全国（area で地域絞り込み）
+  /local code:<ASIN or JAN>                                      … 地元（stores.json の home_regions＝愛知・京都）
   /stores                       … 登録チェーン一覧
   /addstore name url            … 書店を追加（url に {isbn13} などか、実際のISBNを含む検索URLをそのまま）
   /togglestore store_id         … 有効/無効
@@ -23,7 +24,7 @@ from dotenv import load_dotenv
 from . import codes
 from .lookup import fetch_meta, resolve_asin
 from .render import build_messages
-from .stores import check_all, known_ids, load_configs, save_configs
+from .stores import check_all, home_regions, known_ids, load_configs, region_keywords, save_configs
 from .stores.base import StoreConfig
 
 load_dotenv()
@@ -34,6 +35,10 @@ TOKEN = os.environ.get("DISCORD_TOKEN", "")
 GUILD_ID = os.environ.get("GUILD_ID")                          # 任意：即時反映させたいサーバーID
 AUTO_CHANNELS = {c.strip() for c in os.environ.get("AUTO_REPLY_CHANNELS", "").split(",") if c.strip()}
 PREFIX = os.environ.get("COMMAND_PREFIX", "!zaiko")
+LOCAL_PREFIX = os.environ.get("LOCAL_PREFIX", "!local")
+# コードだけ貼ったときの既定範囲: "all"=全国, "local"=地元
+AUTO_REPLY_SCOPE = os.environ.get("AUTO_REPLY_SCOPE", "all").lower()
+LOCAL_WORDS = {"地元", "local", "home", "ローカル"}
 CACHE_TTL = int(os.environ.get("CACHE_TTL_SECONDS", "300"))   # 同じコードの再検索はこの秒数だけキャッシュ
 MAX_PARALLEL_SEARCHES = int(os.environ.get("MAX_PARALLEL_SEARCHES", "2"))
 
@@ -77,6 +82,19 @@ def _cache_put(key: tuple, value) -> None:
     _cache[key] = (time.monotonic(), value)
 
 
+def resolve_area(area: Optional[str]) -> tuple[Optional[str], str]:
+    """入力の地域指定を (check_all に渡す area, 表示ラベル) にする。"""
+    a = (area or "").strip()
+    if not a:
+        return None, "全国"
+    if a in LOCAL_WORDS:
+        regs = home_regions()
+        if not regs:
+            return None, "全国（home_regions 未設定）"
+        return "地元", "地元（" + "・".join(regs) + "）"
+    return a, a
+
+
 async def run_search(text: str, area: Optional[str] = None, only: Optional[str] = None):
     """コード判定 → ASIN解決 → 書誌 → 全店チェック。(messages, error_message) を返す。"""
     code = codes.parse(text)
@@ -88,7 +106,9 @@ async def run_search(text: str, area: Optional[str] = None, only: Optional[str] 
         unknown = only_set - known_ids()
         if unknown:
             return None, f"存在しないチェーンID: {', '.join(sorted(unknown))}（`/stores` で確認できます）"
-    area = (area or "").strip() or None
+    area, scope_label = resolve_area(area)
+    if area and not region_keywords(area):
+        return None, f"地域「{area}」を解釈できませんでした。"
     key = (code.isbn13 or code.jan or code.asin, area, tuple(sorted(only_set)) if only_set else None)
     cached = _cache_get(key)
     if cached:
@@ -101,7 +121,11 @@ async def run_search(text: str, area: Optional[str] = None, only: Optional[str] 
                 await resolve_asin(session, code)
             meta = await fetch_meta(session, code)
         results = await check_all(code, area=area, only=only_set)
-        messages = build_messages(code, meta, results, area, time.perf_counter() - started)
+        serves = None
+        if area:
+            kws = region_keywords(area)
+            serves = {c.id: c.serves(kws) for c in load_configs()}
+        messages = build_messages(code, meta, results, area, time.perf_counter() - started, scope_label, serves)
     _cache_put(key, messages)
     return messages, None
 
@@ -112,12 +136,7 @@ async def _send_all(first_send, rest_send, messages: list[list[discord.Embed]]) 
         await rest_send(embeds=embeds)
 
 
-@bot.tree.command(name="zaiko", description="ASIN / JAN / ISBN から本の店舗在庫を全書店まとめて検索")
-@app_commands.describe(code="ASIN・JAN・ISBN・Amazon URL のどれか",
-                       area="店名に含まれる地域で絞る（例: 新宿, 大阪, 札幌）",
-                       stores="チェーンIDをカンマ区切りで指定（/stores で確認）")
-async def zaiko(interaction: discord.Interaction, code: str, area: Optional[str] = None,
-                stores: Optional[str] = None) -> None:
+async def _respond(interaction: discord.Interaction, code: str, area: Optional[str], stores: Optional[str]) -> None:
     await interaction.response.defer(thinking=True)
     try:
         messages, err = await run_search(code, area, stores)
@@ -129,6 +148,22 @@ async def zaiko(interaction: discord.Interaction, code: str, area: Optional[str]
         await interaction.followup.send(err)
     else:
         await _send_all(interaction.followup.send, interaction.followup.send, messages)
+
+
+@bot.tree.command(name="zaiko", description="全国の書店で本の店舗在庫を検索（area で地域絞り込みも可）")
+@app_commands.describe(code="ASIN・JAN・ISBN・Amazon URL のどれか",
+                       area="地域で絞る: 愛知 / 京都 / 地元（愛知＋京都）/ 新宿 などの地名",
+                       stores="チェーンIDをカンマ区切りで指定（/stores で確認）")
+async def zaiko(interaction: discord.Interaction, code: str, area: Optional[str] = None,
+                stores: Optional[str] = None) -> None:
+    await _respond(interaction, code, area, stores)
+
+
+@bot.tree.command(name="local", description="地元（愛知・京都）の店舗だけで本の在庫を検索")
+@app_commands.describe(code="ASIN・JAN・ISBN・Amazon URL のどれか",
+                       stores="チェーンIDをカンマ区切りで指定（/stores で確認）")
+async def local(interaction: discord.Interaction, code: str, stores: Optional[str] = None) -> None:
+    await _respond(interaction, code, "地元", stores)
 
 
 @bot.tree.command(name="stores", description="登録されている書店チェーンの一覧")
@@ -227,10 +262,19 @@ async def on_message(message: discord.Message) -> None:
             bot._warned_intent = True
             log.warning("メッセージ本文が空です。Developer Portal で MESSAGE CONTENT INTENT が ON か確認してください。")
         return
-    if content.lower().startswith(PREFIX.lower()):
+    low = content.lower()
+    if low.startswith(LOCAL_PREFIX.lower()):
+        parts = content[len(LOCAL_PREFIX):].strip().split()
+        if not parts:
+            await message.reply(f"使い方: `{LOCAL_PREFIX} <ASIN/JAN>`（地元＝{'・'.join(home_regions()) or '未設定'}）",
+                                mention_author=False)
+            return
+        code_text, area = parts[0], "地元"
+    elif low.startswith(PREFIX.lower()):
         parts = content[len(PREFIX):].strip().split()
         if not parts:
-            await message.reply(f"使い方: `{PREFIX} <ASIN/JAN> [地域]`", mention_author=False)
+            await message.reply(f"使い方: `{PREFIX} <ASIN/JAN> [地域]`　例: `{PREFIX} 9784101010014 愛知`",
+                                mention_author=False)
             return
         code_text, area = parts[0], (" ".join(parts[1:]) or None)
     else:
@@ -240,6 +284,8 @@ async def on_message(message: discord.Message) -> None:
         if not parsed:
             return
         code_text, area = parsed
+        if area is None and AUTO_REPLY_SCOPE == "local":
+            area = "地元"
 
     try:
         async with message.channel.typing():

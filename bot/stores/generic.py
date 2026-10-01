@@ -14,7 +14,7 @@ class GenericChecker(Checker):
 
 
 class LinkOnlyChecker(Checker):
-    async def check(self, session: aiohttp.ClientSession, code: Code, area: Optional[str] = None) -> CheckResult:
+    async def check(self, session: aiohttp.ClientSession, code: Code, keywords: Optional[list[str]] = None) -> CheckResult:
         url = self.url_for(code)
         res = CheckResult(chain_id=self.cfg.id, chain=self.cfg.name, url=url or self.cfg.home,
                           status=Status.LINK, verified=self.cfg.verified)

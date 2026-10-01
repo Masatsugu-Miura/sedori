@@ -75,7 +75,14 @@ class StoreConfig:
     stores: list[str] = field(default_factory=list)   # 店名フィルタ（部分一致）。空なら全店
     note: str = ""
     home: str = ""
-    search_alt: str = ""                              # search が埋められないコード種別のときの代替URL
+    search_alt: str = ""                              # search が埋められない／404 のときの代替URL
+    prefectures: list[str] = field(default_factory=list)  # 出店地域（["全国"] or 県名）。地域検索の表示判定に使う
+
+    def serves(self, keywords: list[str]) -> bool:
+        """地域キーワードのどれかに出店しているか（prefectures 未設定なら不明＝True）。"""
+        if not self.prefectures or "全国" in self.prefectures:
+            return True
+        return any(any(k in p or p in k for p in self.prefectures) for k in keywords)
 
     @classmethod
     def from_dict(cls, d: dict) -> "StoreConfig":
@@ -181,12 +188,12 @@ def rows_to_stocks(soup: BeautifulSoup, selector: str) -> list[StoreStock]:
     return dedupe(out)
 
 
-def filter_stores(stocks: list[StoreStock], wanted: list[str], area: Optional[str]) -> list[StoreStock]:
+def filter_stores(stocks: list[StoreStock], wanted: list[str], keywords: Optional[list[str]]) -> list[StoreStock]:
     res = stocks
     if wanted:
         res = [s for s in res if any(w in s.store for w in wanted)]
-    if area:
-        res = [s for s in res if area in s.store]
+    if keywords:
+        res = [s for s in res if any(k in s.store for k in keywords)]
     return res
 
 
@@ -249,7 +256,7 @@ class Checker:
             raw = await r.read()
             return r.status, decode_html(raw, r.charset)
 
-    async def check(self, session: aiohttp.ClientSession, code: Code, area: Optional[str] = None) -> CheckResult:
+    async def check(self, session: aiohttp.ClientSession, code: Code, keywords: Optional[list[str]] = None) -> CheckResult:
         url = self.url_for(code)
         res = CheckResult(chain_id=self.cfg.id, chain=self.cfg.name, url=url or self.cfg.home,
                           verified=self.cfg.verified)
@@ -258,6 +265,12 @@ class Checker:
             return res
         try:
             status, html = await self.fetch(session, url)
+            alt = code.fill(self.cfg.search_alt)
+            if status in (404, 410) and alt and alt != url:
+                # 商品ページ形式のURLが外れたときは検索ページに切り替える
+                status, html = await self.fetch(session, alt)
+                res.url = alt
+                res.message = "商品ページが無かったため検索ページで確認"
         except Exception as e:  # noqa: BLE001
             res.status, res.message = Status.ERROR, f"接続失敗（{type(e).__name__}）"
             return res
@@ -269,12 +282,12 @@ class Checker:
         except Exception as e:  # noqa: BLE001
             res.status, res.message = Status.UNKNOWN, f"解析失敗（{type(e).__name__}）"
             return res
-        res.stocks = filter_stores(stocks, self.cfg.stores, area)
+        res.stocks = filter_stores(stocks, self.cfg.stores, keywords)
         if res.stocks:
             res.summarize()
         elif stocks:
             res.status = Status.OUT
-            res.message = f"指定店舗・エリアの行なし（他 {len(stocks)} 店は表示あり）"
+            res.message = f"指定店舗・地域の行なし（他 {len(stocks)} 店は表示あり）"
         else:
             res.status = Status.UNKNOWN
             res.message = res.message or "在庫表示を読み取れませんでした。リンクで確認してください"

@@ -1,26 +1,318 @@
 {
+  "home_regions": [
+    "愛知",
+    "京都"
+  ],
+  "regions": {
+    "愛知": [
+      "愛知",
+      "名古屋",
+      "名駅",
+      "栄",
+      "金山",
+      "大曽根",
+      "星ヶ丘",
+      "星が丘",
+      "藤が丘",
+      "八事",
+      "上小田井",
+      "mozo",
+      "ワンダーシティ",
+      "熱田",
+      "名古屋空港",
+      "豊橋",
+      "岡崎",
+      "一宮",
+      "瀬戸",
+      "半田",
+      "春日井",
+      "豊川",
+      "津島",
+      "碧南",
+      "刈谷",
+      "豊田",
+      "安城",
+      "西尾",
+      "蒲郡",
+      "犬山",
+      "常滑",
+      "江南",
+      "小牧",
+      "稲沢",
+      "新城",
+      "東海",
+      "大府",
+      "知多",
+      "知立",
+      "尾張旭",
+      "高浜",
+      "岩倉",
+      "豊明",
+      "日進",
+      "田原",
+      "愛西",
+      "清須",
+      "北名古屋",
+      "弥富",
+      "みよし",
+      "あま",
+      "長久手",
+      "東浦",
+      "阿久比",
+      "武豊",
+      "幸田",
+      "扶桑",
+      "大口",
+      "蟹江",
+      "飛島",
+      "東郷",
+      "ナゴヤドーム",
+      "イオンモール名古屋",
+      "ららぽーと名古屋",
+      "長久手",
+      "名古屋茶屋",
+      "常滑",
+      "木曽川",
+      "岡崎",
+      "新瑞橋",
+      "熱田",
+      "ヒルズウォーク徳重"
+    ],
+    "京都": [
+      "京都",
+      "四条",
+      "河原町",
+      "烏丸",
+      "京都駅",
+      "伏見",
+      "宇治",
+      "亀岡",
+      "長岡京",
+      "向日",
+      "城陽",
+      "八幡",
+      "京田辺",
+      "木津",
+      "福知山",
+      "舞鶴",
+      "綾部",
+      "宮津",
+      "京丹後",
+      "南丹",
+      "山科",
+      "桂",
+      "北大路",
+      "二条",
+      "三条",
+      "洛北",
+      "洛南",
+      "醍醐",
+      "久御山",
+      "精華",
+      "大山崎",
+      "北山",
+      "西院",
+      "丹波口",
+      "桃山",
+      "六地蔵",
+      "イオンモール京都",
+      "イオンモールKYOTO",
+      "KYOTO"
+    ]
+  },
   "stores": [
     {
       "id": "kinokuniya",
       "name": "紀伊國屋書店",
       "checker": "kinokuniya",
       "search": "https://www.kinokuniya.co.jp/f/dsg-01-{isbn13}",
+      "search_alt": "https://www.kinokuniya.co.jp/disp/CSfDispListPage_001.jsp?qs=true&ptk=01&q={code}",
       "home": "https://www.kinokuniya.co.jp/",
       "enabled": true,
       "verified": true,
       "stores": [],
-      "note": "商品ページに全店の店舗在庫が出る。stores に『新宿本店』などを入れると絞り込み"
+      "prefectures": [
+        "全国"
+      ],
+      "note": "商品ページに全店の店舗在庫が出る"
     },
     {
-      "id": "honto",
-      "name": "丸善・ジュンク堂・文教堂（honto店舗在庫）",
-      "checker": "honto",
-      "search": "https://honto.jp/netstore/search_10{isbn13}.html",
-      "home": "https://honto.jp/",
+      "id": "maruzenjunkudo",
+      "name": "丸善ジュンク堂書店",
+      "checker": "generic",
+      "search": "https://www.maruzenjunkudo.co.jp/products/{isbn13}",
+      "search_alt": "https://www.maruzenjunkudo.co.jp/search?q={code}",
+      "home": "https://www.maruzenjunkudo.co.jp/",
+      "enabled": true,
+      "verified": false,
+      "stores": [],
+      "prefectures": [
+        "全国"
+      ],
+      "note": "自社サイトの商品ページに店舗在庫。商品URLが違えば検索ページに切り替わる"
+    },
+    {
+      "id": "sanyodo",
+      "name": "三洋堂書店",
+      "checker": "generic",
+      "search": "https://www.sanyodo.co.jp/search?q={code}",
+      "search_alt": "https://www.sanyodo.co.jp/",
+      "home": "https://www.sanyodo.co.jp/",
+      "enabled": true,
+      "verified": false,
+      "stores": [],
+      "prefectures": [
+        "愛知",
+        "岐阜",
+        "三重",
+        "静岡",
+        "滋賀"
+      ],
+      "note": "愛知中心のチェーン。検索URLは未検証"
+    },
+    {
+      "id": "ogaki",
+      "name": "大垣書店",
+      "checker": "generic",
+      "search": "https://www.books-ogaki.co.jp/kensaku?q={code}",
+      "search_alt": "https://www.books-ogaki.co.jp/kensaku",
+      "home": "https://www.books-ogaki.co.jp/",
+      "enabled": true,
+      "verified": false,
+      "stores": [],
+      "prefectures": [
+        "京都",
+        "滋賀",
+        "大阪",
+        "兵庫",
+        "東京"
+      ],
+      "note": "京都中心のチェーン。検索URLは未検証"
+    },
+    {
+      "id": "miyawaki",
+      "name": "宮脇書店",
+      "checker": "link",
+      "search": "http://ishop.visualjapan.co.jp/mzaiko/index.asp?mode=reset",
+      "home": "https://www.miyawakishoten.com/",
       "enabled": true,
       "verified": true,
       "stores": [],
-      "note": "honto の店舗在庫検索。丸善／ジュンク堂／文教堂／戸田書店などが対象"
+      "prefectures": [
+        "全国"
+      ],
+      "note": "在庫検索システムが別サイト。コードを手で入力する"
+    },
+    {
+      "id": "sanseido",
+      "name": "三省堂書店",
+      "checker": "generic",
+      "search": "https://www.books-sanseido.jp/booksearch/BookSearchExecute.action?isbn={isbn13}",
+      "search_alt": "https://www.books-sanseido.jp/booksearch/BookSearchInit.action",
+      "home": "https://www.books-sanseido.jp/",
+      "enabled": true,
+      "verified": false,
+      "stores": [],
+      "prefectures": [
+        "全国"
+      ],
+      "note": "検索URLは未検証。ダメなら検索トップにフォールバック"
+    },
+    {
+      "id": "yurindo",
+      "name": "有隣堂",
+      "checker": "generic",
+      "search": "https://search.yurindo.bscentral.com/search?q={code}",
+      "search_alt": "https://search.yurindo.bscentral.com/search",
+      "home": "https://www.yurindo.co.jp/",
+      "enabled": true,
+      "verified": false,
+      "stores": [],
+      "prefectures": [
+        "神奈川",
+        "東京",
+        "千葉"
+      ],
+      "note": "検索URLは未検証"
+    },
+    {
+      "id": "kumazawa",
+      "name": "くまざわ書店",
+      "checker": "generic",
+      "search": "https://www.search.kumabook.com/kumazawa/html/search?isbn={isbn13}",
+      "search_alt": "https://www.search.kumabook.com/kumazawa/html/",
+      "home": "https://www.kumabook.com/",
+      "enabled": true,
+      "verified": false,
+      "stores": [],
+      "prefectures": [
+        "全国"
+      ],
+      "note": "検索URLは未検証"
+    },
+    {
+      "id": "miraiya",
+      "name": "未来屋書店（イオン）",
+      "checker": "generic",
+      "search": "https://search.miraiyashoten.co.jp/search?q={code}",
+      "search_alt": "https://search.miraiyashoten.co.jp/",
+      "home": "https://www.miraiyashoten.co.jp/",
+      "enabled": true,
+      "verified": false,
+      "stores": [],
+      "prefectures": [
+        "全国"
+      ],
+      "note": "検索URLは未検証"
+    },
+    {
+      "id": "tsutaya",
+      "name": "TSUTAYA / 蔦屋書店",
+      "checker": "generic",
+      "search": "https://store-tsutaya.tsite.jp/search/?q={code}",
+      "search_alt": "https://store-tsutaya.tsite.jp/search/",
+      "home": "https://store-tsutaya.tsite.jp/",
+      "enabled": true,
+      "verified": false,
+      "stores": [],
+      "prefectures": [
+        "全国"
+      ],
+      "note": "検索URLは未検証"
+    },
+    {
+      "id": "book1st",
+      "name": "ブックファースト",
+      "checker": "generic",
+      "search": "https://b1st.e-netservice.biz/book1stnet/searchbook/?isbn={isbn13}",
+      "search_alt": "https://b1st.e-netservice.biz/book1stnet/searchbook/",
+      "home": "https://www.book1st.net/",
+      "enabled": true,
+      "verified": false,
+      "stores": [],
+      "prefectures": [
+        "東京",
+        "神奈川",
+        "大阪",
+        "兵庫",
+        "京都"
+      ],
+      "note": "検索URLは未検証"
+    },
+    {
+      "id": "animate",
+      "name": "アニメイト",
+      "checker": "generic",
+      "search": "https://www.animate-onlineshop.jp/products/list.php?smt={code}",
+      "search_alt": "https://www.animate-onlineshop.jp/sphone/",
+      "home": "https://www.animate-onlineshop.jp/",
+      "enabled": true,
+      "verified": false,
+      "stores": [],
+      "prefectures": [
+        "全国"
+      ],
+      "note": "検索URLは未検証"
     },
     {
       "id": "bookoff",
@@ -31,216 +323,110 @@
       "enabled": true,
       "verified": true,
       "stores": [],
-      "note": "ブックオフオンラインの検索。商品ページの『店舗在庫』で各店の有無を確認"
-    },
-    {
-      "id": "ehon",
-      "name": "e-hon（トーハン系書店の店舗在庫）",
-      "checker": "generic",
-      "search": "https://www.e-hon.ne.jp/bec/SA/Detail?refISBN={isbn13}",
-      "home": "https://www.e-hon.ne.jp/",
-      "enabled": true,
-      "verified": true,
-      "stores": [],
-      "note": "My書店を設定した書店の在庫が見られる。多数の独立系書店が参加"
+      "prefectures": [
+        "全国"
+      ],
+      "note": "商品ページの『店舗在庫』で各店の有無を確認"
     },
     {
       "id": "honyaclub",
-      "name": "Honya Club（日販系書店の店舗在庫）",
-      "checker": "generic",
+      "name": "Honya Club（日販系書店）",
+      "checker": "link",
       "search": "https://www.honyaclub.com/shop/goods/search.aspx?search=x&keyword={isbn13}",
       "home": "https://www.honyaclub.com/",
       "enabled": true,
       "verified": true,
       "stores": [],
-      "note": "商品ページの『店舗在庫を確認』で対応書店の在庫が見られる"
+      "prefectures": [
+        "全国"
+      ],
+      "note": "店舗在庫はログインしないと出ないためリンクのみ"
     },
     {
-      "id": "tsutaya",
-      "name": "TSUTAYA / 蔦屋書店",
-      "checker": "generic",
-      "search": "https://store-tsutaya.tsite.jp/search?q={isbn13}",
-      "home": "https://store-tsutaya.tsite.jp/",
-      "enabled": true,
-      "verified": false,
-      "stores": [],
-      "note": "商品ページから店舗在庫を確認できる"
-    },
-    {
-      "id": "yurindo",
-      "name": "有隣堂",
-      "checker": "generic",
-      "search": "https://www.yurindo.co.jp/store/search?q={isbn13}",
-      "home": "https://www.yurindo.co.jp/",
-      "enabled": true,
-      "verified": false,
-      "stores": [],
-      "note": "検索URLは未検証。合わなければ home の在庫検索ページで確認"
-    },
-    {
-      "id": "sanseido",
-      "name": "三省堂書店",
-      "checker": "generic",
-      "search": "https://www.books-sanseido.co.jp/booksearch/BookSearchExecute.action?isbn={isbn13}",
-      "home": "https://www.books-sanseido.co.jp/",
-      "enabled": true,
-      "verified": false,
-      "stores": [],
-      "note": "検索URLは未検証"
-    },
-    {
-      "id": "miraiya",
-      "name": "未来屋書店（イオン）",
-      "checker": "generic",
-      "search": "https://www.miraiyashoten.co.jp/search/?keyword={isbn13}",
-      "home": "https://www.miraiyashoten.co.jp/",
-      "enabled": true,
-      "verified": false,
-      "stores": [],
-      "note": "検索URLは未検証"
-    },
-    {
-      "id": "kumazawa",
-      "name": "くまざわ書店",
-      "checker": "generic",
-      "search": "https://www.kumabook.com/search/?keyword={isbn13}",
-      "home": "https://www.kumabook.com/",
-      "enabled": true,
-      "verified": false,
-      "stores": [],
-      "note": "検索URLは未検証"
-    },
-    {
-      "id": "book1st",
-      "name": "ブックファースト",
-      "checker": "generic",
-      "search": "https://www.book1st.net/search/?keyword={isbn13}",
-      "home": "https://www.book1st.net/",
-      "enabled": true,
-      "verified": false,
-      "stores": [],
-      "note": "検索URLは未検証"
-    },
-    {
-      "id": "ogaki",
-      "name": "大垣書店",
+      "id": "ehon",
+      "name": "e-hon（トーハン系書店）",
       "checker": "link",
-      "search": "",
-      "home": "https://www.books-ogaki.co.jp/",
-      "enabled": false,
-      "verified": false,
+      "search": "https://www.e-hon.ne.jp/bec/SA/Detail?refISBN={isbn13}",
+      "home": "https://www.e-hon.ne.jp/",
+      "enabled": true,
+      "verified": true,
       "stores": [],
-      "note": "検索URL（{isbn13} を含む）を search に入れて enabled を true に"
+      "prefectures": [
+        "全国"
+      ],
+      "note": "My書店を設定した書店の在庫が見られる"
     },
     {
-      "id": "haruya",
-      "name": "明屋書店",
+      "id": "hanmoto",
+      "name": "版元ドットコム（取扱店一覧）",
       "checker": "link",
-      "search": "",
-      "home": "https://www.haruya.co.jp/",
-      "enabled": false,
-      "verified": false,
+      "search": "https://www.hanmoto.com/bd/isbn/{isbn13}",
+      "home": "https://www.hanmoto.com/",
+      "enabled": true,
+      "verified": true,
       "stores": [],
-      "note": "検索URL（{isbn13} を含む）を search に入れて enabled を true に"
+      "prefectures": [
+        "全国"
+      ],
+      "note": "書誌と取扱ネット書店の一覧"
     },
     {
-      "id": "miyawaki",
-      "name": "宮脇書店",
+      "id": "tsuhankensaku",
+      "name": "書籍横断検索システム",
       "checker": "link",
-      "search": "",
-      "home": "https://www.miyawakishoten.com/",
-      "enabled": false,
+      "search": "http://book.tsuhankensaku.com/hon/?isbn={isbn13}",
+      "search_alt": "http://book.tsuhankensaku.com/hon/",
+      "home": "http://book.tsuhankensaku.com/",
+      "enabled": true,
       "verified": false,
       "stores": [],
-      "note": "検索URL（{isbn13} を含む）を search に入れて enabled を true に"
-    },
-    {
-      "id": "seibunkan",
-      "name": "精文館書店",
-      "checker": "link",
-      "search": "",
-      "home": "https://www.seibunkan.co.jp/",
-      "enabled": false,
-      "verified": false,
-      "stores": [],
-      "note": "検索URL（{isbn13} を含む）を search に入れて enabled を true に"
-    },
-    {
-      "id": "keibundo",
-      "name": "啓文堂書店",
-      "checker": "link",
-      "search": "",
-      "home": "https://www.keibundo.co.jp/",
-      "enabled": false,
-      "verified": false,
-      "stores": [],
-      "note": "検索URL（{isbn13} を含む）を search に入れて enabled を true に"
+      "prefectures": [
+        "全国"
+      ],
+      "note": "ネット書店の横断検索。検索URLは未検証"
     },
     {
       "id": "kikuya",
       "name": "喜久屋書店",
       "checker": "link",
-      "search": "",
-      "home": "https://www.kikuya-shoten.co.jp/",
+      "search": "https://www.blg.co.jp/kikuya/",
+      "home": "https://www.blg.co.jp/kikuya/",
       "enabled": false,
-      "verified": false,
+      "verified": true,
       "stores": [],
-      "note": "検索URL（{isbn13} を含む）を search に入れて enabled を true に"
+      "prefectures": [
+        "全国"
+      ],
+      "note": "店舗在庫はネットで確認不可"
     },
     {
-      "id": "asahiya",
-      "name": "旭屋書店",
+      "id": "bunkyodo",
+      "name": "文教堂",
       "checker": "link",
-      "search": "",
-      "home": "https://www.asahiya.com/",
+      "search": "https://www.bunkyodo.co.jp/page-list-store/",
+      "home": "https://www.bunkyodo.co.jp/",
       "enabled": false,
-      "verified": false,
+      "verified": true,
       "stores": [],
-      "note": "検索URL（{isbn13} を含む）を search に入れて enabled を true に"
-    },
-    {
-      "id": "shosen",
-      "name": "書泉",
-      "checker": "link",
-      "search": "",
-      "home": "https://www.shosen.co.jp/",
-      "enabled": false,
-      "verified": false,
-      "stores": [],
-      "note": "検索URL（{isbn13} を含む）を search に入れて enabled を true に"
-    },
-    {
-      "id": "libro",
-      "name": "リブロ・オリオン書房・あゆみBOOKS（リブロプラス）",
-      "checker": "link",
-      "search": "",
-      "home": "https://www.libro.jp/",
-      "enabled": false,
-      "verified": false,
-      "stores": [],
-      "note": "検索URL（{isbn13} を含む）を search に入れて enabled を true に"
+      "prefectures": [
+        "東京",
+        "神奈川"
+      ],
+      "note": "店舗在庫はネットで確認不可（店舗一覧のみ）"
     },
     {
       "id": "villagevanguard",
       "name": "ヴィレッジヴァンガード",
       "checker": "link",
-      "search": "",
-      "home": "https://www.village-v.co.jp/",
+      "search": "https://village-v.co.jp/item/",
+      "home": "https://village-v.co.jp/",
       "enabled": false,
-      "verified": false,
+      "verified": true,
       "stores": [],
-      "note": "検索URL（{isbn13} を含む）を search に入れて enabled を true に"
-    },
-    {
-      "id": "wondergoo",
-      "name": "WonderGOO",
-      "checker": "link",
-      "search": "",
-      "home": "https://www.wondergoo.co.jp/",
-      "enabled": false,
-      "verified": false,
-      "stores": [],
-      "note": "検索URL（{isbn13} を含む）を search に入れて enabled を true に"
+      "prefectures": [
+        "全国"
+      ],
+      "note": "店舗在庫はネットで確認不可"
     },
     {
       "id": "amazon",
@@ -252,6 +438,7 @@
       "enabled": true,
       "verified": true,
       "stores": [],
+      "prefectures": [],
       "note": "在庫チェックではなく相場確認用のリンク"
     },
     {
@@ -264,6 +451,7 @@
       "enabled": true,
       "verified": true,
       "stores": [],
+      "prefectures": [],
       "note": "価格推移の確認用リンク"
     }
   ]

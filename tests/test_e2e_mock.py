@@ -90,3 +90,15 @@ async def test_magazine_uses_alt_url(server):
     res = {r.chain_id: r for r in await check_all(mag, only={"m", "l"})}
     assert res["m"].url == "http://example.com/s?k=4910012345678" and res["m"].status == Status.LINK
     assert res["l"].status == Status.LINK and "作れません" in res["l"].message
+
+
+@pytest.mark.asyncio
+async def test_404_falls_back_to_alt(server, tmp_path, monkeypatch):
+    import json as _json
+    cfg = {"stores": [{"id": "f", "name": "fallback(mock)", "checker": "generic",
+                       "search": server + "/missing/{isbn13}", "search_alt": server + "/gen"}]}
+    p = tmp_path / "s2.json"
+    p.write_text(_json.dumps(cfg), encoding="utf-8")
+    monkeypatch.setenv("STORES_FILE", str(p))
+    res = (await check_all(codes.parse("9784101010014")))[0]
+    assert res.status == Status.IN_STOCK and res.url.endswith("/gen") and "検索ページ" in res.message

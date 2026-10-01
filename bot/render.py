@@ -49,7 +49,7 @@ def _embed_len(e: discord.Embed) -> int:
 
 
 def header_embed(code: Code, meta: BookMeta, results: list[CheckResult], area: Optional[str],
-                 elapsed: float) -> discord.Embed:
+                 elapsed: float, scope_label: str = "全国") -> discord.Embed:
     counts = {s: 0 for s in Status}
     for r in results:
         counts[r.status] += 1
@@ -60,8 +60,7 @@ def header_embed(code: Code, meta: BookMeta, results: list[CheckResult], area: O
         lines.append(" / ".join(x for x in (meta.author, meta.publisher) if x))
     if meta.price:
         lines.append(meta.price)
-    if area:
-        lines.append(f"エリア絞り込み: **{area}**")
+    lines.append(f"検索範囲: **{scope_label}**" + (f"（店名に {area} 系の地名を含む店舗）" if area else ""))
     lines.append(summary)
     lines += [f"ℹ️ {n}" for n in code.notes]
     e = discord.Embed(title=(meta.title or "書誌情報なし")[:250], description="\n".join(lines)[:2000], color=COLOR)
@@ -71,13 +70,37 @@ def header_embed(code: Code, meta: BookMeta, results: list[CheckResult], area: O
     return e
 
 
+def compact_line(r: CheckResult) -> str:
+    msg = f" {r.message}" if r.message and not r.stocks else ""
+    link = f"[{r.chain}]({r.url})" if r.url else r.chain
+    return f"{r.status.emoji} {link}{msg}"[:200]
+
+
+def split_for_region(results: list[CheckResult], serves: dict[str, bool]) -> tuple[list[CheckResult], list[CheckResult]]:
+    """地域モード: 該当店舗の行があるチェーン＋その地域に出店しているリンク店を『主』、残りを『その他』に。"""
+    main: list[CheckResult] = []
+    rest: list[CheckResult] = []
+    for r in results:
+        in_region = serves.get(r.chain_id, True)
+        if r.stocks or (in_region and r.status in (Status.LINK, Status.UNKNOWN, Status.ERROR)):
+            main.append(r)
+        else:
+            rest.append(r)
+    return main, rest
+
+
 def build_messages(code: Code, meta: BookMeta, results: list[CheckResult], area: Optional[str],
-                   elapsed: float) -> list[list[discord.Embed]]:
-    """Embed を複数メッセージに分けて返す。各メッセージは 10 Embed / 約6000 文字以内。"""
+                   elapsed: float, scope_label: str = "全国",
+                   serves: Optional[dict[str, bool]] = None) -> list[list[discord.Embed]]:
+    """Embed を複数メッセージに分けて返す。各メッセージは 10 Embed / 約6000 文字以内。
+    area 指定時（地域モード）は該当のあるチェーンだけを個別表示し、残りは1つのフィールドにまとめる。"""
     messages: list[list[discord.Embed]] = []
     cur_msg: list[discord.Embed] = []
     cur_len = 0
-    cur = header_embed(code, meta, results, area, elapsed)
+    cur = header_embed(code, meta, results, area, elapsed, scope_label)
+    rest: list[CheckResult] = []
+    if area:
+        results, rest = split_for_region(results, serves or {})
 
     def flush_embed() -> None:
         nonlocal cur, cur_len, cur_msg
@@ -102,6 +125,22 @@ def build_messages(code: Code, meta: BookMeta, results: list[CheckResult], area:
             flush_embed()
             flush_message()
         cur.add_field(name=name, value=value, inline=False)
+    if rest:
+        lines = [compact_line(r) for r in rest]
+        chunk: list[str] = []
+        for ln in lines:
+            if sum(len(x) + 1 for x in chunk) + len(ln) > FIELD_LIMIT:
+                _add_rest_field(cur, chunk)
+                chunk = []
+                if len(cur.fields) >= FIELDS_PER_EMBED:
+                    flush_embed()
+            chunk.append(ln)
+        if chunk:
+            _add_rest_field(cur, chunk)
     flush_embed()
     flush_message()
     return messages
+
+
+def _add_rest_field(embed: discord.Embed, lines: list[str]) -> None:
+    embed.add_field(name="この地域に該当店舗なし／地域外のチェーン", value="\n".join(lines) or "-", inline=False)
