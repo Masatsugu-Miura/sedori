@@ -1,0 +1,152 @@
+{
+ "nearby": [
+  {
+   "id": "900002",
+   "systemid": "Shop_Nagoyabook",
+   "address": "愛知県名古屋市中村区椿町１２−１２ ホリエビル 1F",
+   "type": "store",
+   "short": "",
+   "group": "NAgoya Book Center",
+   "tel": "050-5532-3900",
+   "name": "NAgoya Book Center",
+   "libkey": "NAgoya Book Center",
+   "comment": "30 km",
+   "message": "",
+   "count": 1,
+   "icon": ""
+  },
+  {
+   "id": "045556",
+   "systemid": "Shop_Nippan_045556",
+   "address": "愛知県名古屋市中村区大門町２７",
+   "type": "store",
+   "short": "ピアゴ中村店",
+   "group": "ＢＯＯＫＳえみたす",
+   "tel": "052-486-2111",
+   "name": "ＢＯＯＫＳえみたすピアゴ中村店",
+   "libkey": "045556",
+   "comment": "30 km",
+   "message": "",
+   "count": 1,
+   "icon": ""
+  },
+  {
+   "id": "030949",
+   "systemid": "Shop_Kumazawa",
+   "address": "愛知県名古屋市北区辻町９－１アピタ名古屋北３Ｆ",
+   "type": "store",
+   "short": "",
+   "group": "くまざわ書店名古屋北店",
+   "tel": "",
+   "name": "くまざわ書店名古屋北店",
+   "libkey": "アピタ名古屋北店",
+   "comment": "28 km",
+   "message": "",
+   "count": 1,
+   "icon": ""
+  },
+  {
+   "id": "030532",
+   "systemid": "Shop_Kumazawa",
+   "address": "愛知県名古屋市港区港明１－１０－２８ＭＥＧＡドン・キホーテＵＮＹ１Ｆ",
+   "type": "store",
+   "short": "東海通店",
+   "group": "いけだ書店",
+   "tel": "",
+   "name": "いけだ書店東海通店",
+   "libkey": "東海通店",
+   "comment": "16 km",
+   "message": "",
+   "count": 1,
+   "icon": ""
+  },
+  {
+   "id": "047087",
+   "systemid": "Shop_Touten",
+   "address": "愛知県名古屋市熱田区沢上１－６－９",
+   "type": "store",
+   "short": "",
+   "group": "ＴＯＵＴＥＮ　ＢＯＯＫＳＴＯＲＥ",
+   "tel": "052-888-5446",
+   "name": "ＴＯＵＴＥＮ ＢＯＯＫＳＴＯＲＥ",
+   "libkey": "ＴＯＵＴＥＮ",
+   "comment": "21 km",
+   "message": "5月28日時点の在庫情報を掲載しています。最新の情報については直接お問い合わせください。",
+   "count": 1,
+   "icon": ""
+  },
+  {
+   "id": "028553",
+   "systemid": "Shop_Tohan_028553",
+   "address": "愛知県名古屋市千種区青柳町５－１８",
+   "type": "store",
+   "short": "本店",
+   "group": "らくだ書店",
+   "tel": "052-731-7161",
+   "name": "らくだ書店本店",
+   "libkey": "028553",
+   "comment": "20 km",
+   "message": "",
+   "count": 1,
+   "icon": ""
+  },
+  {
+   "id": "041828",
+   "systemid": "",
+   "address": "愛知県刈谷市若松町２－１０１みなくる刈谷ＳＣ２Ｆ",
+   "type": "store",
+   "short": "刈谷店",
+   "group": "本の王国",
+   "tel": "0566-28-0833",
+   "name": "本の王国刈谷店",
+   "libkey": "刈谷店",
+   "comment": "1.4 km",
+   "message": "この書店は在庫情報が連携されていません。直接お問い合わせください。",
+   "count": 1,
+   "icon": ""
+  },
+  {
+   "id": "045893",
+   "systemid": "",
+   "address": "愛知県名古屋市中村区名駅１－１－３タカシマヤゲートタワーモール８Ｆ",
+   "type": "store",
+   "short": "名古屋本店",
+   "group": "三省堂書店",
+   "tel": "052-566-6801",
+   "name": "三省堂書店名古屋本店",
+   "libkey": "名古屋本店",
+   "comment": "30 km",
+   "message": "この書店は在庫情報が連携されていません。直接お問い合わせください。",
+   "count": 1,
+   "icon": ""
+  }
+ ],
+ "group_all": [
+  {
+   "id": "hokkaido",
+   "type": "group",
+   "short": "北海道",
+   "name": "北海道",
+   "comment": "271 店舗",
+   "count": 271,
+   "score": 1,
+   "icon": "hokkaido"
+  }
+ ],
+ "group_min": [
+  {
+   "id": "aichi",
+   "type": "group",
+   "short": "愛知県",
+   "name": "愛知県",
+   "comment": "396 店舗",
+   "count": 396,
+   "score": 1,
+   "icon": "aichi"
+  }
+ ],
+ "geocoding": {
+  "pref": "愛知県",
+  "city": "名古屋市"
+ }
+}

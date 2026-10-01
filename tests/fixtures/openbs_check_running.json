@@ -1,0 +1,28 @@
+{
+ "session": "2ffd085bb1b0ecc4675da15f1efa4a76683ecb2bc26a63d1530a9d78bf6397d9",
+ "continue": 1,
+ "books": {
+  "9784101010014": {
+   "Shop_Nagoyabook": {
+    "status": "Running",
+    "reserveurl": ""
+   },
+   "Shop_Kumazawa": {
+    "status": "Running",
+    "reserveurl": ""
+   },
+   "Shop_Nippan_045556": {
+    "status": "Running",
+    "reserveurl": ""
+   },
+   "Shop_Touten": {
+    "status": "Running",
+    "reserveurl": ""
+   },
+   "Shop_Tohan_028553": {
+    "status": "Running",
+    "reserveurl": ""
+   }
+  }
+ }
+}

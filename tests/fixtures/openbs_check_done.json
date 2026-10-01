@@ -1,0 +1,45 @@
+{
+ "session": "2ffd085bb1b0ecc4675da15f1efa4a76683ecb2bc26a63d1530a9d78bf6397d9",
+ "continue": 0,
+ "books": {
+  "9784101010014": {
+   "Shop_Nagoyabook": {
+    "status": "OK",
+    "libkey": {
+     "NAgoya Book Center": "在庫あり"
+    },
+    "reserveurl": "",
+    "infos": {
+     "*": "メッセージ機能のテスト中です"
+    }
+   },
+   "Shop_Kumazawa": {
+    "status": "Cache",
+    "libkey": {
+     "アピタ名古屋北店": "在庫あり",
+     "東海通店": "在庫わずか",
+     "八王子店": "在庫わずか",
+     "公津店": "在庫わずか"
+    },
+    "reserveurl": "https://www.search.kumabook.com/kumazawa/html/products/list?syohincd13=9784101010014"
+   },
+   "Shop_Nippan_045556": {
+    "status": "Error",
+    "libkey": {},
+    "reserveurl": ""
+   },
+   "Shop_Touten": {
+    "status": "OK",
+    "libkey": {},
+    "reserveurl": ""
+   },
+   "Shop_Tohan_028553": {
+    "status": "OK",
+    "libkey": {
+     "028553": "注文可能"
+    },
+    "reserveurl": ""
+   }
+  }
+ }
+}

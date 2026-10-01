@@ -248,7 +248,7 @@
       "prefectures": [
         "全国"
       ],
-      "note": "トップの検索フォーム（products/list?mode=books&name=）→ 商品詳細 products/detail/{id} の店舗別在庫表を読む未検証チェッカー。この環境からは www.search.kumabook.com / search.kumabook.com が egress ポリシーで拒否（HTTP 403 host_not_allowed、HTTPS は切断）され本番 HTML を確認できていない。読めない画面なら『要確認』になる"
+      "note": "トップの検索フォーム（products/list?mode=books&name=）→ 商品詳細 products/detail/{id} の店舗別在庫表を読む未検証チェッカー。この環境からは www.search.kumabook.com / search.kumabook.com が egress ポリシーで拒否（HTTP 403 host_not_allowed、HTTPS は切断）され本番 HTML を確認できていない。読めない画面なら『要確認』になる。グループ店のいけだ書店（kumabook.com/shop の店舗一覧に士別・北方・大口。長野店は 2026-09-06、東海通店は 2026-08-31 閉店）も同じ在庫検索の対象。くまざわ・いけだ全店の在庫は書店在庫情報プロジェクト（hanmoto エントリ、Shop_Kumazawa）経由でも取れる"
     },
     {
       "id": "miraiya",
@@ -360,9 +360,10 @@
     },
     {
       "id": "hanmoto",
-      "name": "版元ドットコム（取扱店一覧）",
-      "checker": "link",
+      "name": "書店在庫情報プロジェクト（版元ドットコム）",
+      "checker": "openbs",
       "search": "https://www.hanmoto.com/bd/isbn/{isbn13}",
+      "search_alt": "https://demo.openbs.jp/{isbn13}",
       "home": "https://www.hanmoto.com/",
       "enabled": true,
       "verified": true,
@@ -370,7 +371,7 @@
       "prefectures": [
         "全国"
       ],
-      "note": "書誌と取扱ネット書店の一覧"
+      "note": "版元ドットコムの書誌ページ『書店の店頭在庫を確認』＝書店在庫情報プロジェクト（openBS：JPIC・カーリル・版元ドットコム、info.openbs.jp）。ページ JS と同じく recommend API（位置から近い順 200 店、systemid 付きが連携店）→ カーリル蔵書検索 API（公開仕様 calil.jp/doc/api_ref.html、appkey はページ埋め込みの公開キー。CALIL_APPKEY で差し替え可）で店ごとの 在庫あり/わずか/なし/注文可能 を取る。愛知の連携店は くまざわ書店・いけだ書店（Shop_Kumazawa）、TOUTEN BOOKSTORE、NAgoya Book Center、豊川堂（本店・カルミア・田原＝Shop_Housendou、イオン豊川店＝Shop_Ogaki）、らくだ書店・あおい書店・カルコス扶桑店・鎌倉文庫（トーハン系 Shop_Tohan_店コード）、BOOKSえみたす 15 店（日販系 Shop_Nippan_店コード。2026-10 時点は全店 Error で取れず）。京都は大垣書店・くまざわ・ブックファースト。本の王国・正文館・夢屋書店・三洋堂・未来屋・三省堂は一覧に載るが未連携。都道府県ごとの代表点から集めるので県全域は網羅しない（愛知は名古屋・豊橋・岡崎・一宮の 4 点）"
     },
     {
       "id": "tsuhankensaku",
@@ -549,6 +550,99 @@
         "京都"
       ],
       "note": "左京区一乗寺払殿町10。オンラインショップ（keibunsha-books.com、MakeShop）の検索（/shop/shopbrand.html?search=）は商品名のみで ISBN は 0 件、商品ページに ISBN も店頭在庫も無い（セレクト商品の通販在庫だけ）。Honya Club 加盟店（shop_id=115970、西大路店 116250）だが店頭在庫はログイン＋受取店舗登録が必要。店舗別在庫はネットで確認不可"
+    },
+    {
+      "id": "emitasu",
+      "name": "BOOKSえみたす（アピタ・ピアゴ）",
+      "checker": "link",
+      "search": "https://www.honyaclub.com/shop/goods/search.aspx?search=x&keyword={isbn13}",
+      "home": "https://www.nic-retails.co.jp/shop/?brand_key=key_emitasu",
+      "enabled": false,
+      "verified": true,
+      "stores": [],
+      "prefectures": [
+        "愛知",
+        "岐阜",
+        "三重",
+        "静岡",
+        "神奈川",
+        "奈良"
+      ],
+      "note": "ユニー系（運営はニック・リテールズ、店舗一覧 nic-retails.co.jp/shop/?brand_key=key_emitasu。旧ドメイン b-emitasu.co.jp は 404）。愛知は中村・みなと・植田・鳴海・新甚目寺・稲沢・瀬戸・江南西・八剱・尾西・福釜・安城南・西尾・吉良・ラスパ太田川など 15 店。自社の在庫検索は無く、Honya Club 加盟店（店頭在庫はログイン＋受取店舗登録が必要）・ほんらぶ（アプリ専用）対応店。書店在庫情報プロジェクト（hanmoto エントリ）に日販系 Shop_Nippan_{店コード} として全店が連携登録されているが、2026-10 時点はカーリル API が全店 Error を返し在庫が取れない（復旧すれば hanmoto 側に出る）ため無効"
+    },
+    {
+      "id": "honnookoku",
+      "name": "本の王国（株式会社新進）",
+      "checker": "link",
+      "search": "https://www.sinsin-book.co.jp/storelist",
+      "home": "https://www.sinsin-book.co.jp/",
+      "enabled": false,
+      "verified": true,
+      "stores": [],
+      "prefectures": [
+        "愛知",
+        "静岡",
+        "三重",
+        "岐阜"
+      ],
+      "note": "株式会社新進（旧 sinsin-book.co.jp/index.html は 404、トップは事業紹介）の直営店。愛知は岡崎（ルビットパーク）・刈谷（みなくる刈谷）・豊川（クロスモール）・安城・藤岡（メグリア）・三好（メグリア）・知多（イトーヨーカドー）・高蔵寺の 8 店、他に浜松・津 2 店・松阪・大垣。公式サイトは店舗一覧（/storelist）だけで在庫検索・通販は無い。書店在庫情報プロジェクトの一覧には全店載るが systemid 無し＝未連携。ほんらぶの対応チェーン一覧（2025-05）にも無く、店舗別在庫はネットで確認不可"
+    },
+    {
+      "id": "culcos",
+      "name": "カルコス",
+      "checker": "link",
+      "search": "https://www.e-hon.ne.jp/bec/SA/Detail?refISBN={isbn13}",
+      "home": "https://x.com/Official_Culcos",
+      "enabled": false,
+      "verified": true,
+      "stores": [],
+      "prefectures": [
+        "岐阜",
+        "愛知"
+      ],
+      "note": "岐阜（本店・各務原・穂積）と愛知（扶桑、ほか小牧・一宮は一覧に無し）のトーハン系書店。旧公式 culcos.com は別会社のドメインになり、らくだグループのサイト（rakudagroup.ne.jp）も閉鎖済みで、公式は X アカウントのみ。自社の在庫検索は無く、ほんらぶの対応チェーン一覧（2025-05）にも無い。本店・各務原・穂積・扶桑の 4 店は書店在庫情報プロジェクトに Shop_Tohan_{店コード} で連携しており、店舗別在庫は hanmoto エントリ側に出る（例: 本店 028664、扶桑店 026818）ため、このエントリはリンクのみで無効"
+    },
+    {
+      "id": "housendou",
+      "name": "豊川堂（豊橋）",
+      "checker": "link",
+      "search": "http://housendou.syoten-web.com/shops/",
+      "home": "http://housendou.syoten-web.com/",
+      "enabled": false,
+      "verified": true,
+      "stores": [],
+      "prefectures": [
+        "愛知"
+      ],
+      "note": "豊橋市呉服町 40 の本店、カルミア店（豊橋駅ビル）、セントファーレ田原店、nido、イオンモール豊川店。公式サイト（housendou.syoten-web.com）は店舗案内だけで在庫検索は無く、ネット注文は e-hon（My書店 shotenCode=53003/53017/53070）。本店・カルミア店・田原店は書店在庫情報プロジェクトに自社系統 Shop_Housendou、イオン豊川店は大垣書店の系統 Shop_Ogaki（libkey イオン豊川店）で連携しており、店舗別在庫は hanmoto エントリ側に出る（確認済み：吾輩は猫である＝4 店とも在庫わずか）ため、このエントリはリンクのみで無効"
+    },
+    {
+      "id": "shobunkan",
+      "name": "正文館書店",
+      "checker": "link",
+      "search": "https://www.shobunkanshoten.co.jp/shop/",
+      "home": "https://www.shobunkanshoten.co.jp/",
+      "enabled": false,
+      "verified": true,
+      "stores": [],
+      "prefectures": [
+        "愛知"
+      ],
+      "note": "名古屋市東区東片端町 49 の本店（外商）と知立八ツ田店・フレンドタウン長久手店・緑区グリーンプラザ店・岡崎店（ちくさ正文館は別会社）。公式サイトは店舗案内とメールフォーム注文（/ordertop/order/＝在庫確認・取寄せの依頼）だけで在庫検索は無い。サイトはデータセンター回線から HTTP 403 Forbidden（http/https とも）。書店在庫情報プロジェクトの一覧には載るが systemid 無し＝未連携、ほんらぶ対応チェーン一覧にも無い（豊橋の精文館書店とは別）。店舗別在庫はネットで確認不可"
+    },
+    {
+      "id": "yumeya",
+      "name": "夢屋書店（ピアゴ）",
+      "checker": "link",
+      "search": "https://www.honyaclub.com/shop/goods/search.aspx?search=x&keyword={isbn13}",
+      "home": "https://www.uny.co.jp/",
+      "enabled": false,
+      "verified": true,
+      "stores": [],
+      "prefectures": [
+        "愛知"
+      ],
+      "note": "ユニーの GMS 内書籍コーナーのブランド（Wikipedia）。愛知はピアゴ幸田・守山・布袋・新城。2016 年の再編以降 単独の公式サイトは無く、ユニーの店舗検索と Honya Club の店舗詳細（例 shop_id=139299）があるだけで在庫検索は無い。書店在庫情報プロジェクトの一覧に布袋・幸田・新城が載るが systemid 無し＝未連携。店舗別在庫はネットで確認不可"
     },
     {
       "id": "amazon",

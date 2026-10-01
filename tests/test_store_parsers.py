@@ -21,6 +21,9 @@ from bot.stores.kumazawa import parse_detail as kumazawa_detail
 from bot.stores.maruzenjunkudo import MaruzenJunkudoChecker, parse_locations
 from bot.stores.maruzenjunkudo import merge as mj_merge
 from bot.stores.miraiya import MiraiyaChecker, merge, shops_from_json, stock_status
+from bot.stores import openbs as openbs_mod
+from bot.stores.openbs import OpenBSChecker, linked_stores, points_for
+from bot.stores.openbs import merge as openbs_merge
 from bot.stores.sanseido import SanseidoChecker, parse_stock_list
 from bot.stores.sanyodo import SanyodoChecker, detail_url, parse_detail, parse_shop_areas
 from bot.stores.tsutaya import TsutayaChecker, parse_result, result_url, search_terms, stock_page_url
@@ -276,3 +279,59 @@ def test_kumazawa_parsers_and_flow():
     assert [s.store for s in res.stocks] == ["くまざわ書店 名古屋店"] and "products/detail/9087930" in res.url
     miss = run(KumazawaChecker(c.cfg), {"products/list": (200, "<html><body><p>該当する商品がありません</p></body></html>")})
     assert miss.status == Status.UNKNOWN and "該当商品" in miss.message
+
+
+# --- 書店在庫情報プロジェクト（版元ドットコム → openBS → カーリル蔵書検索 API） ------------------------------
+def test_openbs_parsers():
+    stores = linked_stores(fx("openbs_recommend.json"))
+    assert [s["name"] for s in stores] == ["NAgoya Book Center", "BOOKSえみたすピアゴ中村店", "くまざわ書店名古屋北店",
+                                           "いけだ書店東海通店", "TOUTEN BOOKSTORE", "らくだ書店本店"]   # 未連携（本の王国・三省堂）は除く・全角は正規化
+    assert stores[2]["systemid"] == "Shop_Kumazawa" and stores[2]["libkey"] == "アピタ名古屋北店" and stores[2]["area"] == "愛知・名古屋市"
+    assert stores[5]["systemid"] == "Shop_Tohan_028553" and stores[5]["libkey"] == "028553"
+    assert linked_stores("not json") == [] and linked_stores('{"nearby":[]}') == []
+    stocks, failed = openbs_merge(stores, fx("openbs_check_done.json"), "9784101010014")
+    assert failed == 1                                                       # 日販系（えみたす）は Error → 受信できず
+    got = {s.store: (s.status, s.note) for s in stocks}
+    assert got == {"NAgoya Book Center（愛知・名古屋市）": (Status.IN_STOCK, "在庫あり"),
+                   "くまざわ書店名古屋北店（愛知・名古屋市）": (Status.IN_STOCK, "在庫あり"),
+                   "いけだ書店東海通店（愛知・名古屋市）": (Status.LOW, "在庫わずか"),
+                   "TOUTEN BOOKSTORE（愛知・名古屋市）": (Status.OUT, "在庫なし"),           # 連携店で libkey に無い＝在庫なし
+                   "らくだ書店本店（愛知・名古屋市）": (Status.OUT, "店頭在庫なし（注文可能）")}
+    assert openbs_merge(stores, fx("openbs_check_running.json"), "9784101010014") == ([], 6)   # 打ち切り時は全店 受信できず
+    assert points_for(region_keywords("愛知")) == openbs_mod.POINTS["愛知県"] and len(openbs_mod.POINTS["愛知県"]) == 4
+    assert points_for(region_keywords("地元")) == openbs_mod.POINTS["愛知県"] + openbs_mod.POINTS["京都府"]
+    assert len(points_for([])) == len(points_for(["新宿"])) == sum(len(v) for v in openbs_mod.POINTS.values()) >= 47
+
+
+def test_openbs_flow(monkeypatch):
+    openbs_mod._NEARBY_CACHE.clear()
+    monkeypatch.setattr(openbs_mod, "POLL_INTERVAL", 0)
+    c = OpenBSChecker(cfg("hanmoto", "openbs", "https://www.hanmoto.com/bd/isbn/{isbn13}"))
+    routes = {"/recommend?": "openbs_recommend.json", "&isbn=": "openbs_check_running.json", "&session=": "openbs_check_done.json"}
+    res = run(c, routes, region_keywords("名古屋"))                          # 県名なし → 全点から集めてキーワードで絞る
+    assert res.status == Status.IN_STOCK and res.url == "https://www.hanmoto.com/bd/isbn/9784101010014"
+    assert [s.store for s in res.stocks] == ["NAgoya Book Center（愛知・名古屋市）", "くまざわ書店名古屋北店（愛知・名古屋市）",
+                                             "いけだ書店東海通店（愛知・名古屋市）", "TOUTEN BOOKSTORE（愛知・名古屋市）",
+                                             "らくだ書店本店（愛知・名古屋市）"]
+    assert "1 店は在庫情報を受信できず" in res.message
+    recs = [u for u, _ in res.calls if "/recommend?" in u]
+    assert len(recs) == len(points_for([])) and all(u.endswith(f"&limit={openbs_mod.LIMIT}") for u in recs)
+    checks = [u for u, _ in res.calls if "api.calil.jp/check" in u]
+    assert len(checks) == 2 and "&isbn=9784101010014&systemid=Shop_Kumazawa,Shop_Nagoyabook,Shop_Nippan_045556,Shop_Tohan_028553,Shop_Touten&" in checks[0]
+    assert "&session=2ffd085bb1b0ecc4675da15f1efa4a76683ecb2bc26a63d1530a9d78bf6397d9&" in checks[1]
+    assert f"appkey={openbs_mod.DEFAULT_APPKEY}" in checks[0] and not any("/bd/isbn/" in u for u, _ in res.calls)   # 書誌ページは取らない
+    # 愛知指定：代表点 4 つだけ（一覧はプロセス内キャッシュなので再取得なし）。CALIL_APPKEY で自分のキーに差し替え
+    monkeypatch.setenv("CALIL_APPKEY", "mykey")
+    aichi = run(OpenBSChecker(c.cfg), routes, region_keywords("愛知"))
+    assert aichi.status == Status.IN_STOCK and not any("/recommend?" in u for u, _ in aichi.calls)
+    assert all("appkey=mykey" in u for u, _ in aichi.calls)
+    # 打ち切り（MAX_POLLS）：全店 受信できず → 要確認
+    monkeypatch.setattr(openbs_mod, "MAX_POLLS", 2)
+    stuck = run(OpenBSChecker(c.cfg), {**routes, "&session=": "openbs_check_running.json"}, region_keywords("愛知"))
+    assert stuck.status == Status.UNKNOWN and "6 店は在庫情報を受信できず" in stuck.message
+    assert sum("&session=" in u for u, _ in stuck.calls) == 2
+    err = run(OpenBSChecker(c.cfg), {**routes, "&isbn=": (500, "")}, region_keywords("愛知"))
+    assert err.status == Status.UNKNOWN and "HTTP 500" in err.message
+    openbs_mod._NEARBY_CACHE.clear()
+    none = run(OpenBSChecker(c.cfg), {"/recommend?": (200, '{"nearby":[]}')}, region_keywords("愛知"))
+    assert none.status == Status.UNKNOWN and "近隣書店一覧" in none.message

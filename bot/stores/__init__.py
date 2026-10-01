@@ -20,6 +20,7 @@ from .kinokuniya import KinokuniyaChecker
 from .kumazawa import KumazawaChecker
 from .maruzenjunkudo import MaruzenJunkudoChecker
 from .miraiya import MiraiyaChecker
+from .openbs import OpenBSChecker
 from .sanseido import SanseidoChecker
 from .sanyodo import SanyodoChecker
 from .tsutaya import TsutayaChecker
@@ -39,6 +40,7 @@ CHECKERS: dict[str, type[Checker]] = {
     "maruzenjunkudo": MaruzenJunkudoChecker,
     "yurindo": YurindoChecker,
     "kumazawa": KumazawaChecker,
+    "openbs": OpenBSChecker,
 }
 
 ROOT = Path(__file__).resolve().parents[2]
