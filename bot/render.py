@@ -13,7 +13,7 @@ import discord
 
 from .codes import Code
 from .lookup import GRAPH_FILENAME, BookMeta
-from .stores.base import CheckResult, Status, StoreStock, assign_region
+from .stores.base import CheckResult, Status, StoreConfig, StoreStock, assign_region
 
 COLOR = 0xF2B134
 MAX_ROWS = 10           # 1チェーンあたり表示する店舗行（在庫あり・わずか の店だけ）
@@ -23,6 +23,31 @@ MESSAGE_CHAR_LIMIT = 5800   # 6000 に対して余裕
 REST_FIELD_NAME = "この地域に該当店舗なし／地域外のチェーン"
 OTHER_REGION = "その他"           # 地域分けのとき、どの地域にも振り分けられなかった店
 LINKS_SECTION = "🔗 リンク・要確認"  # 地域分けのとき、店舗行の無いチェーン（リンクのみ／要確認／失敗）をまとめる区画
+MANUAL_SECTION = "📱 自動検索できない店（アプリ・電話で確認）"
+# check_by の値 → 見出し。この順に並べる
+MANUAL_METHODS = [("ほんらぶ", "📱 ほんらぶ（日販のアプリ）"),
+                  ("本コレ", "📱 本コレ（TSUTAYA / CCC のアプリ）"),
+                  ("Honya Club", "📱 Honya Club アプリ（受取店舗に設定すると在庫が見える）"),
+                  ("電話", "📞 電話で確認")]
+
+
+def manual_fields(manual: list[StoreConfig]) -> list[tuple[str, list[str]]]:
+    """アプリ・電話で調べる店を方法ごとに (見出し, 行リスト) にする。"""
+    out: list[tuple[str, list[str]]] = []
+    for key, label in MANUAL_METHODS:
+        lines = []
+        for c in manual:
+            if key not in c.check_by:
+                continue
+            line = c.name
+            if key == "電話" and c.phone:
+                line += f" `{c.phone}`"
+            if c.hint:
+                line += f"（{c.hint}）"
+            lines.append(line)
+        if lines:
+            out.append((label, lines))
+    return out
 LEGEND = "🟢在庫あり 🟡わずか 🔴なし ⚪要確認 🔗リンク ⚠️失敗"
 SHOWN = (Status.IN_STOCK, Status.LOW)   # 店舗行として出す状態（在庫なしの店は件数だけ）
 
@@ -164,12 +189,14 @@ def build_messages(code: Code, meta: BookMeta, results: list[CheckResult], area:
                    elapsed: float, scope_label: str = "全国",
                    serves: Optional[dict[str, bool]] = None,
                    graph: Optional[bytes] = None,
-                   groups: Optional[dict[str, list[str]]] = None) -> list[list[discord.Embed]]:
+                   groups: Optional[dict[str, list[str]]] = None,
+                   manual: Optional[list[StoreConfig]] = None) -> list[list[discord.Embed]]:
     """Embed を複数メッセージに分けて返す。各メッセージは 10 Embed / 約6000 文字以内。
     area 指定時（地域モード）は該当のあるチェーンだけを個別表示し、残りは1つのフィールドにまとめる。
     groups（地元＝愛知・京都のように複数地域）があれば『📍 愛知』『📍 京都』の区画に分けて、
     各チェーンの店をそれぞれの地域側に振り分ける（店が多くても埋もれないように）。
-    graph（Keepa の PNG）があれば先頭 Embed の画像にし、送る側は最初のメッセージにその PNG を添付する。"""
+    graph（Keepa の PNG）があれば先頭 Embed の画像にし、送る側は最初のメッセージにその PNG を添付する。
+    manual（自動検索できない店）があれば『📱 アプリで確認』『📞 電話で確認』の欄を末尾に足す。"""
     messages: list[list[discord.Embed]] = []
     cur_msg: list[discord.Embed] = []
     cur_len = 0
@@ -218,15 +245,26 @@ def build_messages(code: Code, meta: BookMeta, results: list[CheckResult], area:
     else:
         for r in results:
             add_field(f"{r.status.emoji} {r.chain}"[:256], field_value(r) or "-")
-    if rest:
+
+    def add_lines(name: str, lines: list[str]) -> None:
+        """行のリストを 1 フィールドに。長ければ同じ見出しで複数フィールドに分ける。"""
         chunk: list[str] = []
-        for ln in (compact_line(r) for r in rest):
+        for ln in lines:
             if chunk and sum(len(x) + 1 for x in chunk) + len(ln) > FIELD_LIMIT:
-                add_field(REST_FIELD_NAME, "\n".join(chunk))
+                add_field(name, "\n".join(chunk))
                 chunk = []
             chunk.append(ln)
         if chunk:
-            add_field(REST_FIELD_NAME, "\n".join(chunk))
+            add_field(name, "\n".join(chunk))
+
+    fields = manual_fields(manual or [])
+    if fields:
+        if area and groups and len(groups) >= 2:
+            start_section(MANUAL_SECTION)
+        for name, lines in fields:
+            add_lines(name, lines)
+    if rest:
+        add_lines(REST_FIELD_NAME, [compact_line(r) for r in rest])
     flush_embed()
     flush_message()
     return messages

@@ -113,6 +113,14 @@ def home_regions(path: Optional[Path] = None) -> list[str]:
     return list(load_settings(path)["home_regions"])
 
 
+def manual_checks(area: Optional[str], path: Optional[Path] = None) -> list[StoreConfig]:
+    """自動検索できないが、アプリや電話で調べられる店（enabled=false で check_by 付き）。
+    地域指定時はその地域に出店している店だけ。"""
+    kws = region_keywords(area, path)
+    return [c for c in load_configs(path)
+            if not c.enabled and c.check_by and (not kws or c.serves(kws))]
+
+
 def region_groups(area: Optional[str], path: Optional[Path] = None) -> dict[str, list[str]]:
     """『地元』『愛知,京都』のように複数地域をまとめて検索するとき、表示を地域ごとに分けるための
     {地域名: キーワード群}。単一地域や未指定なら {}（分けない）。"""

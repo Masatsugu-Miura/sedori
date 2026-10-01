@@ -77,6 +77,11 @@ class StoreConfig:
     home: str = ""
     search_alt: str = ""                              # search が埋められない／404 のときの代替URL
     prefectures: list[str] = field(default_factory=list)  # 出店地域（["全国"] or 県名）。地域検索の表示判定に使う
+    # 自動検索できない店の「代わりの調べ方」。enabled=false の店に付けると結果の末尾に
+    # 『📱 アプリで確認』『📞 電話で確認』としてまとめて出す。値は ほんらぶ / 本コレ / Honya Club / 電話
+    check_by: list[str] = field(default_factory=list)
+    phone: str = ""
+    hint: str = ""                                    # 一覧に添える短い説明（例: アピタ・ピアゴ内 約15店）
 
     def serves(self, keywords: list[str]) -> bool:
         """地域キーワードのどれかに出店しているか（prefectures 未設定なら不明＝True）。"""

@@ -26,7 +26,7 @@ from . import codes
 from .lookup import GRAPH_FILENAME, fetch_keepa_graph, fetch_meta, resolve_asin
 from .render import build_messages
 from .stores import (check_all, home_regions, known_ids, load_configs, load_settings, make_id,
-                     region_groups, region_keywords, save_configs)
+                     manual_checks, region_groups, region_keywords, save_configs)
 from .stores.base import PREFECTURES, StoreConfig
 
 load_dotenv()
@@ -160,7 +160,7 @@ async def run_search(text: str, area: Optional[str] = None, only: Optional[str] 
             kws = region_keywords(area)
             serves = {c.id: c.serves(kws) for c in load_configs()}
         messages = build_messages(code, meta, results, area, time.perf_counter() - started, scope_label, serves,
-                                  graph, region_groups(area))
+                                  graph, region_groups(area), manual_checks(area))
     _cache_put(key, (messages, graph))
     return (messages, graph), None
 

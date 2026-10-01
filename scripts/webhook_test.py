@@ -25,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from bot import codes  # noqa: E402
 from bot.lookup import GRAPH_FILENAME, fetch_keepa_graph, fetch_meta, resolve_asin  # noqa: E402
 from bot.render import build_messages  # noqa: E402
-from bot.stores import check_all, load_configs, region_groups, region_keywords  # noqa: E402
+from bot.stores import check_all, load_configs, manual_checks, region_groups, region_keywords  # noqa: E402
 
 load_dotenv()
 
@@ -54,7 +54,7 @@ async def main() -> None:
     results = await check_all(code, area=area)
     serves = {c.id: c.serves(region_keywords(area)) for c in load_configs()} if area else None
     messages = build_messages(code, meta, results, area, time.perf_counter() - started, label, serves, graph,
-                              region_groups(area))
+                              region_groups(area), manual_checks(area))
 
     print(f"== {meta.title or '(書誌なし)'}  {code.label()}  波形: {'あり' if graph else 'なし'}")
     for r in results:
