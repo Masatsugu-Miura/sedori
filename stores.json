@@ -737,6 +737,34 @@
       "stores": [],
       "prefectures": [],
       "note": "価格推移の確認用リンク"
+    },
+    {
+      "id": "seibunkan",
+      "name": "精文館書店（豊橋）",
+      "checker": "link",
+      "search": "https://www.honyaclub.com/shop/default.aspx?isb=561510",
+      "search_alt": "https://www.seibunkan.co.jp/shop",
+      "home": "https://www.seibunkan.co.jp/",
+      "enabled": false,
+      "verified": true,
+      "stores": [],
+      "prefectures": [
+        "愛知",
+        "静岡",
+        "岐阜",
+        "神奈川",
+        "千葉",
+        "埼玉",
+        "大阪",
+        "兵庫"
+      ],
+      "note": "豊橋本社のチェーン（愛知中心に約47店。駿河屋・TSUTAYA BOOKSTORE の FC も運営）。公式サイト（seibunkan.co.jp）には在庫検索が無く、『在庫状況は店舗にお問合せください』と明記。ネット注文は Honya Club（shop isb=561510）へのリンクだけで、店舗在庫はログインして受取店舗に設定した人だけが見られる。書店在庫情報プロジェクト（openBS）の店舗一覧には豊橋周辺 25 店が載っているが systemid が空＝在庫連携なし。汐田橋店・中島新町店など TSUTAYA 看板の店は TSUTAYA の店舗検索に出るので TSUTAYA の欄で見える",
+      "check_by": [
+        "Honya Club",
+        "ほんらぶ"
+      ],
+      "phone": "",
+      "hint": "ほんらぶ対応は要確認。汐田橋・中島新町など TSUTAYA 看板の店は TSUTAYA の欄に出る"
     }
   ]
 }
