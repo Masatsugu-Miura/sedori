@@ -57,7 +57,8 @@ Discord に **ASIN か JAN（ISBN）** を貼ると、登録した書店チェ�
 
 ### 2. 起動（ローカル / VPS、Python 3.10 以上）
 Windows は `start.bat` をダブルクリック、Mac / Linux は `bash start.sh`。初回は仮想環境を作り、`.env` が無ければ作って止まるので、
-`DISCORD_TOKEN` を書いてもう一度実行します。手でやる場合は:
+`DISCORD_TOKEN` を書いてもう一度実行します。Windows でサインイン後に自動起動させるには `autostart.bat` をダブルクリック
+（解除は `autostart.bat remove`）。手でやる場合は:
 ```bash
 pip install -r requirements.txt
 cp .env.example .env     # DISCORD_TOKEN を書く。GUILD_ID を入れるとスラッシュコマンドが即反映
