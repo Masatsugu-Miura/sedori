@@ -54,9 +54,13 @@ class AmazonInfo:
     """Amazon 商品ページから拾った価格。取れなかった項目は空文字。"""
     asin: str
     price: str = ""          # 新品（Amazon / カート）の価格表示（例: ￥693）
-    other_price: str = ""    # 「その他中古品、新品、コレクター商品 が ￥318から」の価格
+    other_price: str = ""    # 中古の最安（SP-API なら送料込み。ページ読みなら「その他中古品… が ￥318から」）
     availability: str = ""   # 在庫あり / 一時的に在庫切れ など
-    fetched: bool = False    # ページを取れたか（False なら Amazon に拒否された等）
+    fetched: bool = False    # 取れたか（False なら Amazon に拒否された等）
+    new_count: int = 0       # SP-API: 新品の出品数
+    used_count: int = 0      # SP-API: 中古の出品数
+    fba_new: str = ""        # SP-API: FBA 新品の最安
+    source: str = ""         # "spapi" / "page"
 
     @property
     def url(self) -> str:
@@ -174,10 +178,20 @@ async def _fetch_amazon_curl(url: str) -> str:
 
 
 async def fetch_amazon(session: aiohttp.ClientSession, asin: Optional[str]) -> Optional[AmazonInfo]:
-    """Amazon 商品ページの価格。ASIN が無ければ None、ページを取れなければ fetched=False の AmazonInfo。
+    """Amazon の価格。SP-API のキーがあれば SP-API（確実）、無ければ商品ページを読む。
+    ASIN が無ければ None、取れなければ fetched=False の AmazonInfo。
     確認ページ（ロボット判定）が返ったときは突破せず、curl で 1 回だけ取り直す。"""
     if not asin:
         return None
+    from . import spapi   # noqa: PLC0415
+    if spapi.configured():
+        try:
+            d = await spapi.fetch_prices(session, asin)
+            return AmazonInfo(asin=asin, price=d["price"], other_price=d["other_price"], fetched=True,
+                              new_count=d["new_count"], used_count=d["used_count"], fba_new=d["fba_new"], source="spapi")
+        except Exception as e:  # noqa: BLE001
+            import logging   # noqa: PLC0415
+            logging.getLogger("zaikobot").warning("SP-API で価格を取れず、商品ページに切り替え: %s", e)
     url = f"https://www.amazon.co.jp/dp/{asin}"
     html = ""
     try:
@@ -190,7 +204,9 @@ async def fetch_amazon(session: aiohttp.ClientSession, asin: Optional[str]) -> O
         html = await _fetch_amazon_curl(url)
     if not html or _is_amazon_block(html):
         return AmazonInfo(asin=asin)
-    return parse_amazon(html, asin)
+    info = parse_amazon(html, asin)
+    info.source = "page"
+    return info
 
 
 async def resolve_asin(session: aiohttp.ClientSession, code: Code) -> Optional[str]:

@@ -253,9 +253,11 @@ def amazon_line(a) -> str:
     """『Amazon ￥693 ／ 中古・他 ￥318〜 ・ [商品ページ](…) ・ [Keepa](…)』"""
     parts = []
     if a.price:
-        parts.append(f"Amazon {a.price}")
+        parts.append(f"Amazon {a.price}" + (f"（新品 {a.new_count}件）" if a.new_count else ""))
     if a.other_price:
-        parts.append(f"中古・他 {a.other_price}〜")
+        parts.append(f"中古 {a.other_price}〜" + (f"（{a.used_count}件）" if a.used_count else ""))
+    if a.fba_new and a.fba_new != a.price:
+        parts.append(f"FBA新品 {a.fba_new}")
     if not parts:
         parts.append("Amazon 価格取得できず" if a.fetched else "Amazon 価格取得できず（ページを開けず）")
     return " ／ ".join(parts) + f" ・ [商品ページ]({a.url}) ・ [Keepa]({a.keepa_url})"
