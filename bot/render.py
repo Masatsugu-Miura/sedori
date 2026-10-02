@@ -34,22 +34,28 @@ MANUAL_METHODS = [("ほんらぶ", "📱 ほんらぶ（日販のアプリ）"),
                   ("電話", "📞 電話で確認")]
 
 
-def manual_fields(manual: list[StoreConfig]) -> list[tuple[str, list[str]]]:
-    """アプリ・電話で調べる店を方法ごとに (見出し, 行リスト) にする。"""
+def _manual_line(c: StoreConfig, key: str) -> str:
+    line = c.name
+    if key == "電話" and c.phone:
+        line += f" `{c.phone}`"
+    if c.hint:
+        line += f"（{c.hint}）"
+    return line
+
+
+def manual_fields(manual: list[StoreConfig],
+                  groups: Optional[dict[str, list[str]]] = None) -> list[tuple[str, list[str]]]:
+    """アプリ・電話で調べる店を方法ごとに (見出し, 行リスト) にする。
+    groups（地元＝愛知・京都）があれば『📞 電話で確認（愛知）』『📞 電話で確認（京都）』のように地域ごとに分け、
+    両方に店がある系列は両方に出す。"""
     out: list[tuple[str, list[str]]] = []
-    for key, label in MANUAL_METHODS:
-        lines = []
-        for c in manual:
-            if key not in c.check_by:
-                continue
-            line = c.name
-            if key == "電話" and c.phone:
-                line += f" `{c.phone}`"
-            if c.hint:
-                line += f"（{c.hint}）"
-            lines.append(line)
-        if lines:
-            out.append((label, lines))
+    regions = list(groups.items()) if groups and len(groups) >= 2 else [("", [])]
+    for region, kws in regions:
+        for key, label in MANUAL_METHODS:
+            lines = [_manual_line(c, key) for c in manual
+                     if key in c.check_by and (not region or c.serves(kws))]
+            if lines:
+                out.append((f"{label}（{region}）" if region else label, lines))
     return out
 LEGEND = "多い=在庫あり 少ない=在庫わずか ⚪要確認 🔗リンク ⚠️失敗"
 CONT_FIELD_NAME = "└ 続き"
@@ -397,7 +403,7 @@ def build_messages(code: Code, meta: BookMeta, results: list[CheckResult], area:
         if chunk:
             add_field(name, "\n".join(chunk))
 
-    fields = manual_fields(manual or [])
+    fields = manual_fields(manual or [], groups if split else None)
     if fields:
         if split:
             start_section(MANUAL_SECTION)

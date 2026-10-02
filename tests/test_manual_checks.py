@@ -42,9 +42,12 @@ def test_manual_section_rendered_after_stock_sections():
     assert MANUAL_SECTION in titles and titles.index(MANUAL_SECTION) > titles.index("📍 愛知")
     sec = embeds[titles.index(MANUAL_SECTION)]
     names = [f.name for f in sec.fields]
-    assert names[0].startswith("📱 ほんらぶ") and any(n.startswith("📞 電話") for n in names)
-    text = "\n".join(f.value for f in sec.fields)
-    assert "精文館" in text and "075-431-2937" in text
+    assert names[0].startswith("📱 ほんらぶ（日販のアプリ）（愛知）") and "📞 電話で確認（愛知）" in names and "📞 電話で確認（京都）" in names
+    assert names.index("📞 電話で確認（愛知）") < names.index("📞 電話で確認（京都）")
+    by = {f.name: f.value for f in sec.fields}
+    assert "精文館書店" in by["📱 ほんらぶ（日販のアプリ）（愛知）"] and "三盛堂書店 `075-431-2937`" in by["📞 電話で確認（京都）"]
+    assert "三盛堂" not in by["📞 電話で確認（愛知）"] and "（京都" not in by["📞 電話で確認（京都）"]   # 地名は消してある
+    assert "ヴィレッジヴァンガード" in by["📞 電話で確認（愛知）"] and "ヴィレッジヴァンガード" in by["📞 電話で確認（京都）"]
     # 全国・単一地域では見出し Embed を作らずフィールドとして続ける
     msgs2 = build_messages(code, BookMeta(title="t"), [r], None, 1.0, manual=manual_checks(None))
     assert [e.title for e in msgs2[0]] == ["t", None] and any(f.name.startswith("📞 電話") for f in msgs2[0][1].fields)

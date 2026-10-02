@@ -526,7 +526,7 @@
     },
     {
       "id": "sanseidokyoto",
-      "name": "三盛堂書店（京都・千本）",
+      "name": "三盛堂書店",
       "checker": "link",
       "search": "https://www.books.gr.jp/bookstore/index.php?e=13",
       "home": "https://www.books.gr.jp/bookstore/index.php?e=13",
@@ -545,7 +545,7 @@
     },
     {
       "id": "whitebooks",
-      "name": "ホワイトブックス（京都・上鳥羽）",
+      "name": "ホワイトブックス",
       "checker": "link",
       "search": "https://www.tokyo-shoten.or.jp/seinenbu/shop/kyoto/81353",
       "home": "https://www.tokyo-shoten.or.jp/seinenbu/shop/kyoto/81353",
@@ -564,7 +564,7 @@
     },
     {
       "id": "otowado",
-      "name": "音羽堂書店（京都・七条）",
+      "name": "音羽堂書店",
       "checker": "link",
       "search": "https://www.hoitto.gr.jp/center/shop/shop010/",
       "home": "https://www.hoitto.gr.jp/center/shop/shop010/",
@@ -583,7 +583,7 @@
     },
     {
       "id": "tojishoin",
-      "name": "東寺書院（京都）",
+      "name": "東寺書院",
       "checker": "link",
       "search": "https://www.tokyo-shoten.or.jp/seinenbu/shop/kyoto/81349",
       "home": "https://www.tokyo-shoten.or.jp/seinenbu/shop/kyoto/81349",
@@ -602,7 +602,7 @@
     },
     {
       "id": "endoshoten",
-      "name": "遠藤書店（京都・東九条）",
+      "name": "遠藤書店",
       "checker": "link",
       "search": "https://www.books.gr.jp/bookstore/index.php?e=74",
       "home": "https://www.books.gr.jp/bookstore/index.php?e=74",
@@ -728,7 +728,7 @@
       "check_by": [
         "電話"
       ],
-      "hint": "名古屋"
+      "hint": "サイトはメール注文のみ"
     },
     {
       "id": "yumeya",
@@ -779,7 +779,7 @@
     },
     {
       "id": "seibunkan",
-      "name": "精文館書店（豊橋）",
+      "name": "精文館書店",
       "checker": "link",
       "search": "https://www.honyaclub.com/shop/default.aspx?isb=561510",
       "search_alt": "https://www.seibunkan.co.jp/shop",
@@ -803,7 +803,7 @@
         "ほんらぶ"
       ],
       "phone": "",
-      "hint": "ほんらぶ対応は要確認。汐田橋・中島新町など TSUTAYA 看板の店は TSUTAYA の欄に出る",
+      "hint": "ほんらぶ対応は要確認。TSUTAYA 看板の店は TSUTAYA の欄に出る",
       "icon": "🟣"
     },
     {
@@ -839,7 +839,7 @@
         "電話"
       ],
       "phone": "0567-23-7110",
-      "hint": "津島本店。ヨシヅヤ内 11店"
+      "hint": "津島本店。11店"
     },
     {
       "id": "comicalhouse",
@@ -863,7 +863,7 @@
     },
     {
       "id": "doumeishorin",
-      "name": "同盟書林（半田）",
+      "name": "同盟書林",
       "checker": "link",
       "search": "https://www.tokyo-shoten.or.jp/seinenbu/shop/aichi/80387",
       "home": "https://www.tokyo-shoten.or.jp/seinenbu/shop/aichi/80387",
@@ -899,11 +899,11 @@
         "電話"
       ],
       "phone": "0533-89-0022",
-      "hint": "豊川本店。愛知13店"
+      "hint": "豊川本店。13店"
     },
     {
       "id": "ryusuishobo",
-      "name": "流水書房（愛知）",
+      "name": "流水書房",
       "checker": "link",
       "search": "https://www.tokyo-shoten.or.jp/seinenbu/shop/aichi/93306",
       "home": "https://www.tokyo-shoten.or.jp/seinenbu/shop/aichi/93306",
@@ -918,7 +918,7 @@
         "電話"
       ],
       "phone": "052-238-3361",
-      "hint": "栄スカイル店。愛知5店"
+      "hint": "栄スカイル店。5店"
     },
     {
       "id": "libretto",
@@ -956,11 +956,11 @@
         "電話"
       ],
       "phone": "0565-27-5481",
-      "hint": "豊田・本店3F"
+      "hint": "本店3F"
     },
     {
       "id": "honyaclubaichi",
-      "name": "Honya Club 加盟の地元書店（愛知）",
+      "name": "Honya Club 加盟の地元書店",
       "checker": "link",
       "search": "https://www.honyaclub.com/shop/store/list.aspx?pref=%88%A4%92m%8C%A7",
       "home": "https://www.honyaclub.com/shop/store/list.aspx?pref=%88%A4%92m%8C%A7",
