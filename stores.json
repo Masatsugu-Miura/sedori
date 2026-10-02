@@ -756,11 +756,11 @@
       "search": "https://www.amazon.co.jp/dp/{asin}",
       "search_alt": "https://www.amazon.co.jp/s?k={code}",
       "home": "https://www.amazon.co.jp/",
-      "enabled": true,
+      "enabled": false,
       "verified": true,
       "stores": [],
       "prefectures": [],
-      "note": "在庫チェックではなく相場確認用のリンク",
+      "note": "結果の先頭（定価の下）に価格とリンクを出すので、この欄は非表示。在庫チェックではなく相場確認用のリンク",
       "icon": "🛒"
     },
     {
@@ -770,11 +770,11 @@
       "search": "https://keepa.com/#!product/5-{asin}",
       "search_alt": "https://keepa.com/#!search/5-{code}",
       "home": "https://keepa.com/",
-      "enabled": true,
+      "enabled": false,
       "verified": true,
       "stores": [],
       "prefectures": [],
-      "note": "価格推移の確認用リンク",
+      "note": "結果の先頭（定価の下）に価格とリンクを出すので、この欄は非表示。価格推移の確認用リンク",
       "icon": "📈"
     },
     {

@@ -40,7 +40,7 @@ def test_local_results_are_split_into_aichi_and_kyoto_sections():
                           serves={"mj": True, "ss": True, "ogaki": True, "yurindo": False}, groups=g)
     embeds = [e for m in msgs for e in m]
     titles = [e.title for e in embeds]
-    assert titles[0] == "t" and "愛知 2店（多い1 少ない1） ／ 京都 1店（多い1 少ない0）" in embeds[0].description
+    assert titles[0] == "t" and "愛知 2店" not in embeds[0].description   # 地域別の内訳の行は出さない（ユーザー希望）
     assert titles[1:4] == ["📍 愛知", "📍 京都", LINKS_SECTION]
     aichi, kyoto, links = embeds[1], embeds[2], embeds[3]
     from bot.render import icon_for

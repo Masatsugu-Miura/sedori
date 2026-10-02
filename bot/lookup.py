@@ -50,6 +50,24 @@ async def fetch_keepa_graph(session: aiohttp.ClientSession, asin: Optional[str])
 
 
 @dataclass
+class AmazonInfo:
+    """Amazon 商品ページから拾った価格。取れなかった項目は空文字。"""
+    asin: str
+    price: str = ""          # 新品（Amazon / カート）の価格表示（例: ￥693）
+    other_price: str = ""    # 「その他中古品、新品、コレクター商品 が ￥318から」の価格
+    availability: str = ""   # 在庫あり / 一時的に在庫切れ など
+    fetched: bool = False    # ページを取れたか（False なら Amazon に拒否された等）
+
+    @property
+    def url(self) -> str:
+        return f"https://www.amazon.co.jp/dp/{self.asin}"
+
+    @property
+    def keepa_url(self) -> str:
+        return f"https://keepa.com/#!product/5-{self.asin}"
+
+
+@dataclass
 class BookMeta:
     title: str = ""
     author: str = ""
@@ -57,6 +75,7 @@ class BookMeta:
     price: str = ""
     cover: str = ""
     source: str = ""
+    amazon: Optional["AmazonInfo"] = None
 
 
 async def fetch_meta(session: aiohttp.ClientSession, code: Code) -> BookMeta:
@@ -106,6 +125,72 @@ def _openbd_price(rec: dict) -> str:
 
 _ISBN13_RE = re.compile(r"ISBN[-‐]?13\D{0,20}(97[89][\d\-‐]{10,16})", re.I)
 _JAN_RE = re.compile(r"(?:JAN|EAN|GTIN)\D{0,20}(\d{13})", re.I)
+
+
+_PRICE_TXT = re.compile(r"[￥¥]\s*[\d,]+|USD\s*[\d.,]+|[\d,]+\s*円")
+_OTHER = re.compile(r"(?:中古品|コレクター商品)[^\d￥¥]{0,20}([￥¥]\s*[\d,]+|USD\s*[\d.,]+)\s*から")
+
+
+def parse_amazon(html: str, asin: str) -> AmazonInfo:
+    """商品ページの HTML から新品価格・中古の最安・在庫表示を拾う。構造が変わっても落ちないように緩く取る。"""
+    from bs4 import BeautifulSoup   # noqa: PLC0415  （lookup は軽く保つため関数内 import）
+    soup = BeautifulSoup(html, "html.parser")
+    info = AmazonInfo(asin=asin, fetched=True)
+    for sel in ("#corePriceDisplay_desktop_feature_div .a-price .a-offscreen", "#corePrice_feature_div .a-price .a-offscreen",
+                "#buybox .a-price .a-offscreen", "#price", "#priceblock_ourprice", ".a-price .a-offscreen"):
+        el = soup.select_one(sel)
+        if el and _PRICE_TXT.search(el.get_text(" ", strip=True)):
+            info.price = re.sub(r"\s+", "", el.get_text(" ", strip=True)).replace("USD", "USD ")
+            break
+    for el in soup.select(".olp-link, #olp_feature_div, #olpLinkWidget_feature_div, [data-feature-name=olp]"):
+        m = _OTHER.search(el.get_text(" ", strip=True).replace("\xa0", " "))
+        if m:
+            info.other_price = re.sub(r"\s+", "", m.group(1)).replace("USD", "USD ")
+            break
+    av = soup.select_one("#availability")
+    if av:
+        info.availability = re.sub(r"\s+", " ", av.get_text(" ", strip=True))[:30]
+    return info
+
+
+def _is_amazon_block(html: str) -> bool:
+    """ロボット確認ページか（商品ページの JS にも "captcha" の語はあるので、確認ページ特有の印で判定）。"""
+    return ('id="captchacharacters"' in html or "Amazon CAPTCHA" in html or "ロボットではないことを確認" in html
+            or "/errors_page/validateCaptcha" in html or "<title>Amazon.co.jp</title>" in html)
+
+
+async def _fetch_amazon_curl(url: str) -> str:
+    """aiohttp だと Amazon が確認ページを返すことがあるので、OS の curl（Windows 10 以降と Mac に標準）でも試す。
+    curl が無ければ空文字。"""
+    import asyncio   # noqa: PLC0415
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "curl", "-sSL", "--compressed", "--max-time", "20", "-A", UA, "-H", "Accept-Language: ja,en;q=0.8", url,
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
+        out, _ = await asyncio.wait_for(proc.communicate(), timeout=25)
+    except Exception:  # noqa: BLE001
+        return ""
+    return out.decode("utf-8", errors="replace")
+
+
+async def fetch_amazon(session: aiohttp.ClientSession, asin: Optional[str]) -> Optional[AmazonInfo]:
+    """Amazon 商品ページの価格。ASIN が無ければ None、ページを取れなければ fetched=False の AmazonInfo。
+    確認ページ（ロボット判定）が返ったときは突破せず、curl で 1 回だけ取り直す。"""
+    if not asin:
+        return None
+    url = f"https://www.amazon.co.jp/dp/{asin}"
+    html = ""
+    try:
+        async with session.get(url, headers=HEADERS, timeout=aiohttp.ClientTimeout(total=15)) as r:
+            if r.status == 200:
+                html = await r.text(errors="replace")
+    except Exception:  # noqa: BLE001
+        pass
+    if not html or _is_amazon_block(html):
+        html = await _fetch_amazon_curl(url)
+    if not html or _is_amazon_block(html):
+        return AmazonInfo(asin=asin)
+    return parse_amazon(html, asin)
 
 
 async def resolve_asin(session: aiohttp.ClientSession, code: Code) -> Optional[str]:

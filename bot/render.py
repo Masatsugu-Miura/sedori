@@ -249,6 +249,18 @@ def split_by_region(results: list[CheckResult], groups: dict[str, list[str]]) ->
     return {name: rs for name, rs in out.items() if rs}
 
 
+def amazon_line(a) -> str:
+    """『Amazon ￥693 ／ 中古・他 ￥318〜 ・ [商品ページ](…) ・ [Keepa](…)』"""
+    parts = []
+    if a.price:
+        parts.append(f"Amazon {a.price}")
+    if a.other_price:
+        parts.append(f"中古・他 {a.other_price}〜")
+    if not parts:
+        parts.append("Amazon 価格取得できず" if a.fetched else "Amazon 価格取得できず（ページを開けず）")
+    return " ／ ".join(parts) + f" ・ [商品ページ]({a.url}) ・ [Keepa]({a.keepa_url})"
+
+
 def header_embed(code: Code, meta: BookMeta, results: list[CheckResult], area: Optional[str],
                  elapsed: float, scope_label: str = "全国", graph: Optional[bytes] = None,
                  groups: Optional[dict[str, list[str]]] = None) -> discord.Embed:
@@ -256,20 +268,12 @@ def header_embed(code: Code, meta: BookMeta, results: list[CheckResult], area: O
     if meta.author or meta.publisher:
         lines.append(" / ".join(x for x in (meta.author, meta.publisher) if x))
     if meta.price:
-        lines.append(meta.price)
-    # 検索範囲と合計の行はユーザー希望で出さない（区画の見出しと地域ごとの内訳で分かる）。全国だけ一言添える
+        lines.append(f"定価 {meta.price}")
+    if meta.amazon:
+        lines.append(amazon_line(meta.amazon))
+    # 検索範囲・合計・地域別の内訳の行はユーザー希望で出さない。全国だけ一言添える
     if not area:
         lines.append(f"検索範囲: **{scope_label}**")
-    if groups:
-        # 地域ごとの内訳（愛知 15店（多い3 少ない12） ／ 京都 3店（多い1 少ない2））
-        parts = []
-        for name, rs in split_by_region(results, groups).items():
-            ss = [s for r in rs for s in r.stocks]
-            a = sum(1 for s in ss if s.status == Status.IN_STOCK)
-            b = sum(1 for s in ss if s.status == Status.LOW)
-            parts.append(f"{name} {a + b}店（多い{a} 少ない{b}）")
-        if parts:
-            lines.append(" ／ ".join(parts))
     lines += [f"ℹ️ {n}" for n in code.notes]
     e = discord.Embed(title=(meta.title or "書誌情報なし")[:250], description="\n".join(lines)[:2000], color=COLOR)
     if meta.cover:

@@ -23,7 +23,7 @@ from discord import app_commands
 from dotenv import load_dotenv
 
 from . import codes, watch
-from .lookup import GRAPH_FILENAME, fetch_keepa_graph, fetch_meta, resolve_asin
+from .lookup import GRAPH_FILENAME, fetch_amazon, fetch_keepa_graph, fetch_meta, resolve_asin
 from .render import build_messages
 from .stores import (check_all, home_regions, known_ids, load_configs, load_settings, make_id,
                      manual_checks, region_groups, region_keywords, save_configs)
@@ -152,9 +152,11 @@ async def run_search(text: str, area: Optional[str] = None, only: Optional[str] 
             if code.kind == "ASIN" and not code.isbn13:
                 await resolve_asin(session, code)
             # 書誌・波形・在庫チェックは独立なので並行に（書誌 API のタイムアウト待ちを在庫チェックに上乗せしない）
-            meta, graph, results = await asyncio.gather(fetch_meta(session, code),
-                                                        fetch_keepa_graph(session, code.asin),
-                                                        check_all(code, area=area, only=only_set))
+            meta, graph, amazon, results = await asyncio.gather(fetch_meta(session, code),
+                                                                fetch_keepa_graph(session, code.asin),
+                                                                fetch_amazon(session, code.asin),
+                                                                check_all(code, area=area, only=only_set))
+            meta.amazon = amazon
         serves = None
         if area:
             kws = region_keywords(area)
