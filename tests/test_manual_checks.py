@@ -8,12 +8,13 @@ from bot.stores.base import CheckResult, Status, StoreConfig, StoreStock
 
 def test_manual_checks_filtered_by_area():
     ids_all = {c.id for c in manual_checks(None)}
-    assert {"emitasu", "sanseidokyoto", "villagevanguard"} <= ids_all
+    assert {"sanseidokyoto", "villagevanguard", "seibunkan"} <= ids_all
+    assert "emitasu" not in ids_all and "culcos" not in ids_all   # 在庫が自動で出る店はアプリ一覧に出さない（重複）
     kyoto = {c.id for c in manual_checks("京都")}
     assert {"sanseidokyoto", "whitebooks", "otowado", "tojishoin", "endoshoten", "keibunsha", "villagevanguard"} <= kyoto
-    assert "emitasu" not in kyoto and "yumeya" not in kyoto
+    assert "yumeya" not in kyoto
     aichi = {c.id for c in manual_checks("愛知")}
-    assert {"emitasu", "honnookoku", "yumeya", "shobunkan", "bonanza", "comicalhouse", "doumeishorin", "onsevendays",
+    assert {"honnookoku", "yumeya", "shobunkan", "bonanza", "comicalhouse", "doumeishorin", "onsevendays",
             "ryusuishobo", "libretto", "meglia", "honyaclubaichi"} <= aichi and "sanseidokyoto" not in aichi
     assert "surugaya" not in aichi                    # 駿河屋はリンク付きで有効（自動検索欄に出る）なので手動一覧には載せない
     assert {c.id for c in manual_checks("地元")} == kyoto | aichi
@@ -43,7 +44,7 @@ def test_manual_section_rendered_after_stock_sections():
     names = [f.name for f in sec.fields]
     assert names[0].startswith("📱 ほんらぶ") and any(n.startswith("📞 電話") for n in names)
     text = "\n".join(f.value for f in sec.fields)
-    assert "BOOKSえみたす" in text and "075-431-2937" in text
+    assert "精文館" in text and "075-431-2937" in text
     # 全国・単一地域では見出し Embed を作らずフィールドとして続ける
     msgs2 = build_messages(code, BookMeta(title="t"), [r], None, 1.0, manual=manual_checks(None))
     assert [e.title for e in msgs2[0]] == ["t", None] and any(f.name.startswith("📞 電話") for f in msgs2[0][1].fields)

@@ -204,7 +204,7 @@
       "search": "https://kensaku.syoten-web.com/kensaku/bunken.ctrl?action=bookstoreHomepageOg_eh2&Operation=direct_tanpin&syohin_cd={isbn13}",
       "search_alt": "https://www.books-ogaki.co.jp/kensaku",
       "home": "https://www.books-ogaki.co.jp/",
-      "enabled": true,
+      "enabled": false,
       "verified": true,
       "stores": [],
       "prefectures": [
@@ -214,7 +214,7 @@
         "兵庫",
         "東京"
       ],
-      "note": "在庫検索は kensaku.syoten-web.com（Apache）の bunken.ctrl。データセンター回線からはトップ・フォーム・POST（Referer/Origin/ブラウザUA付き）のどれも HTTP 403 Forbidden で、http:// も不可＝国内回線限定とみられる。search は公式トップの商品リンクと同じ direct_tanpin 形式なので、日本からならリンク先で商品の店舗別在庫が開く想定",
+      "note": "京都の店舗在庫は書店在庫情報プロジェクト経由で自動取得できるので、このリンク欄は重複として非表示。在庫検索は kensaku.syoten-web.com（Apache）の bunken.ctrl。データセンター回線からはトップ・フォーム・POST（Referer/Origin/ブラウザUA付き）のどれも HTTP 403 Forbidden で、http:// も不可＝国内回線限定とみられる。search は公式トップの商品リンクと同じ direct_tanpin 形式なので、日本からならリンク先で商品の店舗別在庫が開く想定",
       "icon": "🔷"
     },
     {
@@ -255,7 +255,7 @@
       "search": "https://search.yurindo.bscentral.jp/item?ic={isbn13}",
       "search_alt": "https://search.yurindo.bscentral.jp/search",
       "home": "https://www.yurindo.co.jp/",
-      "enabled": true,
+      "enabled": false,
       "verified": true,
       "stores": [],
       "prefectures": [
@@ -263,7 +263,7 @@
         "東京",
         "千葉"
       ],
-      "note": "在庫検索 SPA（Bookstore Central）の /api/search-public/items/_get をページと同じ符号化（URLエンコード＋文字コード+6、署名なし）で呼び、全店（神奈川・東京・千葉 36店）の在庫数を読む。4以上=あり/1〜3=わずか/0=なし。旧URL(.com)は証明書エラー、正しくは .jp",
+      "note": "愛知・京都に店が無いので非表示（ユーザー指定）。有効にすれば全国36店の在庫が取れる。在庫検索 SPA（Bookstore Central）の /api/search-public/items/_get をページと同じ符号化（URLエンコード＋文字コード+6、署名なし）で呼び、全店（神奈川・東京・千葉 36店）の在庫数を読む。4以上=あり/1〜3=わずか/0=なし。旧URL(.com)は証明書エラー、正しくは .jp",
       "icon": "🟦"
     },
     {
@@ -273,13 +273,13 @@
       "search": "https://www.search.kumabook.com/kumazawa/html/products/list?mode=books&name={isbn13}",
       "search_alt": "https://www.search.kumabook.com/kumazawa/html/",
       "home": "https://www.kumabook.com/",
-      "enabled": true,
+      "enabled": false,
       "verified": false,
       "stores": [],
       "prefectures": [
         "全国"
       ],
-      "note": "トップの検索フォーム（products/list?mode=books&name=）→ 商品詳細 products/detail/{id} の店舗別在庫表を読む未検証チェッカー。この環境からは www.search.kumabook.com / search.kumabook.com が egress ポリシーで拒否（HTTP 403 host_not_allowed、HTTPS は切断）され本番 HTML を確認できていない。読めない画面なら『要確認』になる。グループ店のいけだ書店（kumabook.com/shop の店舗一覧に士別・北方・大口。長野店は 2026-09-06、東海通店は 2026-08-31 閉店）も同じ在庫検索の対象。くまざわ・いけだ全店の在庫は書店在庫情報プロジェクト（hanmoto エントリ、Shop_Kumazawa）経由でも取れる",
+      "note": "くまざわ・いけだ書店の店舗在庫は書店在庫情報プロジェクト経由で自動取得できるので、この自社サイト検索は重複として非表示。トップの検索フォーム（products/list?mode=books&name=）→ 商品詳細 products/detail/{id} の店舗別在庫表を読む未検証チェッカー。この環境からは www.search.kumabook.com / search.kumabook.com が egress ポリシーで拒否（HTTP 403 host_not_allowed、HTTPS は切断）され本番 HTML を確認できていない。読めない画面なら『要確認』になる。グループ店のいけだ書店（kumabook.com/shop の店舗一覧に士別・北方・大口。長野店は 2026-09-06、東海通店は 2026-08-31 閉店）も同じ在庫検索の対象。くまざわ・いけだ全店の在庫は書店在庫情報プロジェクト（hanmoto エントリ、Shop_Kumazawa）経由でも取れる",
       "icon": "🔵"
     },
     {
@@ -655,13 +655,9 @@
         "神奈川",
         "奈良"
       ],
-      "note": "ユニー系（運営はニック・リテールズ、店舗一覧 nic-retails.co.jp/shop/?brand_key=key_emitasu。旧ドメイン b-emitasu.co.jp は 404）。愛知は中村・みなと・植田・鳴海・新甚目寺・稲沢・瀬戸・江南西・八剱・尾西・福釜・安城南・西尾・吉良・ラスパ太田川など 15 店。自社の在庫検索は無く、Honya Club 加盟店（店頭在庫はログイン＋受取店舗登録が必要）・ほんらぶ（アプリ専用）対応店。書店在庫情報プロジェクト（hanmoto エントリ）に日販系 Shop_Nippan_{店コード} として全店が連携登録されているが、2026-10 時点はカーリル API が全店 Error を返し在庫が取れない（復旧すれば hanmoto 側に出る）ため無効",
-      "check_by": [
-        "ほんらぶ",
-        "本コレ",
-        "Honya Club"
-      ],
-      "hint": "約15店。在庫は書店在庫情報プロジェクトの欄にも自動で出る（2026-10-02 連携復旧）",
+      "note": "在庫は書店在庫情報プロジェクト（版元ドットコム）経由で自動取得（2026-10-02 日販系の連携復旧）。アプリ（ほんらぶ・本コレ・Honya Club）でも見られるが結果と重複するので一覧には出さない。ユニー系（運営はニック・リテールズ、店舗一覧 nic-retails.co.jp/shop/?brand_key=key_emitasu。旧ドメイン b-emitasu.co.jp は 404）。愛知は中村・みなと・植田・鳴海・新甚目寺・稲沢・瀬戸・江南西・八剱・尾西・福釜・安城南・西尾・吉良・ラスパ太田川など 15 店。自社の在庫検索は無く、Honya Club 加盟店（店頭在庫はログイン＋受取店舗登録が必要）・ほんらぶ（アプリ専用）対応店。書店在庫情報プロジェクト（hanmoto エントリ）に日販系 Shop_Nippan_{店コード} として全店が連携登録されているが、2026-10 時点はカーリル API が全店 Error を返し在庫が取れない（復旧すれば hanmoto 側に出る）ため無効",
+      "check_by": [],
+      "hint": "",
       "icon": "🟠"
     },
     {
@@ -698,11 +694,9 @@
         "岐阜",
         "愛知"
       ],
-      "note": "岐阜（本店・各務原・穂積）と愛知（扶桑、ほか小牧・一宮は一覧に無し）のトーハン系書店。旧公式 culcos.com は別会社のドメインになり、らくだグループのサイト（rakudagroup.ne.jp）も閉鎖済みで、公式は X アカウントのみ。自社の在庫検索は無く、ほんらぶの対応チェーン一覧（2025-05）にも無い。本店・各務原・穂積・扶桑の 4 店は書店在庫情報プロジェクトに Shop_Tohan_{店コード} で連携しており、店舗別在庫は hanmoto エントリ側に出る（例: 本店 028664、扶桑店 026818）ため、このエントリはリンクのみで無効",
-      "check_by": [
-        "ほんらぶ"
-      ],
-      "hint": "岐阜中心・対応は要確認"
+      "note": "在庫は書店在庫情報プロジェクト経由で自動取得（本店・各務原・穂積・扶桑）。重複するのでアプリ一覧には出さない。岐阜（本店・各務原・穂積）と愛知（扶桑、ほか小牧・一宮は一覧に無し）のトーハン系書店。旧公式 culcos.com は別会社のドメインになり、らくだグループのサイト（rakudagroup.ne.jp）も閉鎖済みで、公式は X アカウントのみ。自社の在庫検索は無く、ほんらぶの対応チェーン一覧（2025-05）にも無い。本店・各務原・穂積・扶桑の 4 店は書店在庫情報プロジェクトに Shop_Tohan_{店コード} で連携しており、店舗別在庫は hanmoto エントリ側に出る（例: 本店 028664、扶桑店 026818）ため、このエントリはリンクのみで無効",
+      "check_by": [],
+      "hint": ""
     },
     {
       "id": "housendou",
