@@ -1,6 +1,9 @@
 """書店チェッカーの共通部品。"""
 from __future__ import annotations
 
+import asyncio
+import os
+import random
 import re
 from dataclasses import dataclass, field
 from enum import Enum
@@ -322,6 +325,20 @@ def short_area(address: str) -> str:
     return "・".join(x for x in (pref_short(pref) if pref else "", city) if x)
 
 
+def _delay_range() -> tuple[float, float]:
+    lo = float(os.environ.get("SCRAPE_DELAY_MIN", "0.3"))
+    hi = float(os.environ.get("SCRAPE_DELAY_MAX", "1.2"))
+    return (min(lo, hi), max(lo, hi))
+
+
+async def polite_delay() -> None:
+    """書店サイトへ送る前のランダム待機。SCRAPE_DELAY_MAX=0 で無効（テスト用）。"""
+    lo, hi = _delay_range()
+    if hi <= 0:
+        return
+    await asyncio.sleep(random.uniform(lo, hi))
+
+
 class Checker:
     """1チェーン分の在庫チェック。サブクラスは `parse` または `check` を上書きする。"""
 
@@ -338,7 +355,9 @@ class Checker:
 
     async def fetch(self, session: aiohttp.ClientSession, url: str, data: Optional[dict] = None,
                     headers: Optional[dict] = None) -> tuple[int, str]:
-        """data を渡すと POST（フォーム送信）。"""
+        """data を渡すと POST（フォーム送信）。書店サイトへの負荷と機械的なアクセスの目立ちを抑えるため、
+        毎回ランダムに待ってから送る（SCRAPE_DELAY_MIN〜SCRAPE_DELAY_MAX 秒、既定 0.3〜1.2）。"""
+        await polite_delay()
         h = {**HEADERS, **(headers or {})}
         req = session.post(url, data=data, headers=h, timeout=self.timeout) if data is not None else \
             session.get(url, headers=h, timeout=self.timeout, allow_redirects=True)
