@@ -132,14 +132,53 @@ def field_value(r: CheckResult, strip_label: bool = False) -> str:
     return field_values(r, strip_label)[0]
 
 
+# 店名の先頭から書店の系列名を取る（書店在庫情報プロジェクトの結果は系列が混ざるため）
+# 長い語を先に書く（BOOKSえみたす を BOOKS で切らないため）
+_BRAND = re.compile(r"^(.*?(?:BOOKSえみたす|Book Center|BOOKSTORE|ヴィレッジヴァンガード|TSUTAYA|書店|書房|書林|書院|堂|文庫"
+                    r"|えみたす|BOOKS|ブックス|センター|カルコス|明屋|精文館|蔦屋))", re.I)
+
+
+def brand_of(name: str) -> str:
+    m = _BRAND.match(name)
+    return m.group(1).strip() if m else name
+
+
+def brand_groups(stocks: list[StoreStock]) -> list[tuple[str, list[StoreStock]]]:
+    """系列ごとに [(系列名, その系列の店…)]。在庫あり店の多い系列から、同数なら名前順。"""
+    groups: dict[str, list[StoreStock]] = {}
+    for s in stocks:
+        groups.setdefault(brand_of(s.store), []).append(s)
+    return sorted(groups.items(), key=lambda kv: (-sum(1 for s in kv[1] if s.status in SHOWN), kv[0]))
+
+
+def _strip_brand(name: str, brand: str) -> str:
+    rest = name[len(brand):].lstrip(" 　・") if name.startswith(brand) else name
+    return rest or name
+
+
 def chain_lines(r: CheckResult, region: str = "", strip_label: bool = False) -> list[str]:
     """チェーン 1 つ分を本文の行に。1 行目が『**[チェーン名](リンク)** 愛知 5/25』（在庫あり店数/確認店数）、
-    続けて在庫あり→少ない の店を全部。店舗行の無いチェーンは『🔗 [名前](リンク) メッセージ』の 1 行だけ。"""
+    続けて在庫あり→少ない の店を全部。店舗行の無いチェーンは『🔗 [名前](リンク) メッセージ』の 1 行だけ。
+    group_brands の結果（系列が混ざる）は『▸ くまざわ書店 8/12』の小見出しで系列ごとにまとめ、行から系列名を省く。"""
     link = f"[{r.chain}]({r.url})" if r.url else r.chain
     if r.stocks:
         shown = sorted((s for s in r.stocks if s.status in SHOWN), key=lambda s: s.status.rank)
         head = f"**{link}** {region + ' ' if region else ''}{len(shown)}/{len(r.stocks)}"
-        return [head] + [row_text(s, strip_label) for s in shown]
+        if not r.group_brands:
+            return [head] + [row_text(s, strip_label) for s in shown]
+        lines = [head]
+        for brand, members in brand_groups(r.stocks):
+            rows = sorted((s for s in members if s.status in SHOWN), key=lambda s: s.status.rank)
+            if not rows:
+                continue
+            if len(members) == 1:
+                lines.append(row_text(rows[0], strip_label))      # 1 店だけの系列は小見出し無しでそのまま
+                continue
+            lines.append(f"▸ {brand} {len(rows)}/{len(members)}")
+            for s in rows:
+                name = _strip_brand(store_name(s, strip_label), brand)
+                lines.append(f"{name}{SEP}{stock_word(s)}")
+        return lines
     extra = f" {r.message}" if r.message else ""
     if not r.verified:
         extra += " ※URL未検証"

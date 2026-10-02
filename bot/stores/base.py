@@ -58,6 +58,7 @@ class CheckResult:
     stocks: list[StoreStock] = field(default_factory=list)
     message: str = ""
     verified: bool = True
+    group_brands: bool = False   # 複数の書店系列が混ざる結果（書店在庫情報プロジェクト）。表示で系列ごとにまとめる
 
     def summarize(self) -> None:
         if self.stocks:

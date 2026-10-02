@@ -151,3 +151,28 @@ def test_messages_stay_under_discord_byte_limit():
     assert len(msgs) >= 2
     for embeds in msgs:
         assert sum(_embed_bytes(e) for e in embeds) <= 9200
+
+
+def test_mixed_brand_results_are_grouped_by_brand():
+    from bot.render import brand_of, chain_lines
+    assert brand_of("くまざわ書店名古屋セントラルパーク店") == "くまざわ書店"
+    assert brand_of("BOOKSえみたすピアゴ植田店") == "BOOKSえみたす"
+    assert brand_of("あおい書店らくだ西春大日店") == "あおい書店"
+    assert brand_of("豊川堂カルミア店") == "豊川堂" and brand_of("カルコス各務原店") == "カルコス"
+    assert brand_of("NAgoya Book Center") == "NAgoya Book Center" and brand_of("TOUTEN BOOKSTORE") == "TOUTEN BOOKSTORE"
+    r = CheckResult("hanmoto", "書店在庫情報プロジェクト", "https://h", group_brands=True, stocks=[
+        StoreStock("NAgoya Book Center（愛知・名古屋市）", Status.IN_STOCK, "在庫あり"),
+        StoreStock("くまざわ書店名古屋南店（愛知・名古屋市）", Status.LOW, "在庫わずか"),
+        StoreStock("BOOKSえみたすピアゴ植田店（愛知・名古屋市）", Status.IN_STOCK, "在庫あり"),
+        StoreStock("くまざわ書店鳴海店（愛知・名古屋市）", Status.OUT, "在庫なし"),
+        StoreStock("BOOKSえみたす吉良店（愛知・西尾市）", Status.LOW, "在庫わずか"),
+        StoreStock("くまざわ書店岩倉店（愛知・岩倉市）", Status.IN_STOCK, "在庫あり"),
+        StoreStock("TOUTEN BOOKSTORE（愛知・名古屋市）", Status.OUT, "在庫なし")])
+    r.summarize()
+    assert chain_lines(r, "愛知", strip_label=True) == [
+        "**[書店在庫情報プロジェクト](https://h)** 愛知 5/7",
+        "▸ BOOKSえみたす 2/2", "ピアゴ植田店 ─ 多い", "吉良店 ─ 少ない",
+        "▸ くまざわ書店 2/3", "岩倉店 ─ 多い", "名古屋南店 ─ 少ない",
+        "NAgoya Book Center ─ 多い"]                       # 1 店だけの系列は小見出し無し。在庫なしの TOUTEN は出ない
+    plain = CheckResult("k", "紀伊國屋", "https://k", stocks=r.stocks[:2])
+    assert "▸" not in "\n".join(chain_lines(plain))      # 通常のチェーンは従来どおり

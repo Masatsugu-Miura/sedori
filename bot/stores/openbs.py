@@ -172,6 +172,7 @@ class OpenBSChecker(Checker):
             except ValueError:
                 break
         stocks, failed = merge(list(stores.values()), text, isbn)
+        res.group_brands = True      # くまざわ・えみたす・らくだ … が混ざるので表示は系列ごとにまとめる
         if failed:
             res.message = f"{failed} 店は在庫情報を受信できず（日販系など連携エラーの系統）"
         return stocks
