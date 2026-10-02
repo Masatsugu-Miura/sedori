@@ -166,7 +166,8 @@ async def check_all(code: Code, area: Optional[str] = None, only: Optional[set[s
                 except asyncio.TimeoutError:
                     return CheckResult(chain_id=cfg.id, chain=cfg.name,
                                        url=code.fill(cfg.search) or code.fill(cfg.search_alt) or cfg.home,
-                                       status=Status.ERROR, message="タイムアウト", verified=cfg.verified)
+                                       status=Status.ERROR, message="タイムアウト", verified=cfg.verified,
+                                       icon=cfg.icon)
         results = await asyncio.gather(*(run(c) for c in cfgs))
     results.sort(key=lambda r: (r.status.rank, r.chain))
     return list(results)

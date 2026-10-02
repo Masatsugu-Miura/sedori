@@ -143,6 +143,23 @@ def brand_of(name: str) -> str:
     return m.group(1).strip() if m else name
 
 
+# 系列の見分け用の絵文字。在庫の意味で使う 🟢🟡🔴⚪ は使わない。
+BRAND_ICONS = {"くまざわ書店": "🔵", "いけだ書店": "🔵", "BOOKSえみたす": "🟠", "らくだ書店": "🟣", "あおい書店": "🟣",
+               "明屋書店": "🟣", "豊川堂": "🟤", "大垣書店": "🔷", "カルコス": "🔶", "鎌倉文庫": "💠",
+               "NAgoya Book Center": "🔹", "TOUTEN BOOKSTORE": "🔸", "精文館書店": "🟣", "戸田書店": "🟫",
+               "ブックスモア": "🟫", "ブックファースト": "📓"}
+PALETTE = ["🔵", "🟠", "🟣", "🟤", "🔷", "🔶", "💠", "🔹", "🔸", "🟦", "🟧", "🟪", "🟫", "📘", "📙", "📗", "📕", "📒", "📔", "📓"]
+
+
+def icon_for(name: str, explicit: str = "") -> str:
+    """表示用の絵文字。stores.json の icon → 系列表 → 名前から安定して選ぶ（同じ名前はいつも同じ色）。"""
+    if explicit:
+        return explicit
+    if name in BRAND_ICONS:
+        return BRAND_ICONS[name]
+    return PALETTE[sum(ord(ch) for ch in name) % len(PALETTE)]
+
+
 def brand_groups(stocks: list[StoreStock]) -> list[tuple[str, list[StoreStock]]]:
     """系列ごとに [(系列名, その系列の店…)]。在庫あり店の多い系列から、同数なら名前順。"""
     groups: dict[str, list[StoreStock]] = {}
@@ -161,23 +178,25 @@ def chain_lines(r: CheckResult, region: str = "", strip_label: bool = False) -> 
     続けて在庫あり→少ない の店を全部。店舗行の無いチェーンは『🔗 [名前](リンク) メッセージ』の 1 行だけ。
     group_brands の結果（系列が混ざる）は『▸ くまざわ書店 8/12』の小見出しで系列ごとにまとめ、行から系列名を省く。"""
     link = f"[{r.chain}]({r.url})" if r.url else r.chain
+    icon = icon_for(r.chain, r.icon)
     if r.stocks:
         shown = sorted((s for s in r.stocks if s.status in SHOWN), key=lambda s: s.status.rank)
-        head = f"**{link}** {region + ' ' if region else ''}{len(shown)}/{len(r.stocks)}"
+        head = f"{icon} **{link}** {region + ' ' if region else ''}{len(shown)}/{len(r.stocks)}"
         if not r.group_brands:
-            return [head] + [row_text(s, strip_label) for s in shown]
+            return [head] + [f"{icon} {row_text(s, strip_label)}" for s in shown]
         lines = [head]
         for brand, members in brand_groups(r.stocks):
             rows = sorted((s for s in members if s.status in SHOWN), key=lambda s: s.status.rank)
             if not rows:
                 continue
+            bicon = icon_for(brand)
             if len(members) == 1:
-                lines.append(row_text(rows[0], strip_label))      # 1 店だけの系列は小見出し無しでそのまま
+                lines.append(f"{bicon} {row_text(rows[0], strip_label)}")      # 1 店だけの系列は小見出し無しでそのまま
                 continue
-            lines.append(f"▸ {brand} {len(rows)}/{len(members)}")
+            lines.append(f"{bicon} **{brand}** {len(rows)}/{len(members)}")
             for s in rows:
                 name = _strip_brand(store_name(s, strip_label), brand)
-                lines.append(f"{name}{SEP}{stock_word(s)}")
+                lines.append(f"{bicon} {name}{SEP}{stock_word(s)}")
         return lines
     extra = f" {r.message}" if r.message else ""
     if not r.verified:

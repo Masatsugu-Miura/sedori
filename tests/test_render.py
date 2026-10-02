@@ -71,14 +71,16 @@ def test_long_store_list_shows_every_store_in_stock_first():
     embeds = [e for m in msgs for e in m]
     assert len(embeds) >= 3 and all(ulen(e.description or "") <= 4096 for e in embeds)   # 続きの Embed に分かれる
     rows = _body(msgs).split("\n")
-    assert rows[0] == "**[紀伊國屋](https://k)** 202/212"          # 在庫あり店数/確認店数、リンクは名前に
-    assert rows[1] == "新宿本店 ─ 多い" and rows[2] == "梅田本店 ─ 6個" and rows[3] == "ショッピングモール内の長い名前の店0 ─ 少ない"
-    assert "ショッピングモール内の長い名前の店199 ─ 少ない" in rows and not any("…他" in x or "サイトで確認" in x for x in rows)
+    icon = rows[0][0]
+    assert rows[0] == f"{icon} **[紀伊國屋](https://k)** 202/212"          # 在庫あり店数/確認店数、リンクは名前に
+    assert rows[1] == f"{icon} 新宿本店 ─ 多い" and rows[2] == f"{icon} 梅田本店 ─ 6個"
+    assert rows[3] == f"{icon} ショッピングモール内の長い名前の店0 ─ 少ない"
+    assert f"{icon} ショッピングモール内の長い名前の店199 ─ 少ない" in rows and not any("…他" in x or "サイトで確認" in x for x in rows)
     assert "札幌本店" not in rows                       # 在庫なしの店は行に出さない
     # 在庫あり店舗が無いチェーンは 1 行だけ
     none = CheckResult("k", "紀伊國屋", "https://k", stocks=stocks[:0] + [StoreStock("札幌本店", Status.OUT, "在庫なし")])
     none.summarize()
-    assert _body(build_messages(c, BookMeta(), [none], None, 1.0)) == "**[紀伊國屋](https://k)** 0/1"
+    assert _body(build_messages(c, BookMeta(), [none], None, 1.0)).endswith(" **[紀伊國屋](https://k)** 0/1")
 
 
 def test_store_row_format():
@@ -169,10 +171,19 @@ def test_mixed_brand_results_are_grouped_by_brand():
         StoreStock("くまざわ書店岩倉店（愛知・岩倉市）", Status.IN_STOCK, "在庫あり"),
         StoreStock("TOUTEN BOOKSTORE（愛知・名古屋市）", Status.OUT, "在庫なし")])
     r.summarize()
+    r.icon = "📚"
     assert chain_lines(r, "愛知", strip_label=True) == [
-        "**[書店在庫情報プロジェクト](https://h)** 愛知 5/7",
-        "▸ BOOKSえみたす 2/2", "ピアゴ植田店 ─ 多い", "吉良店 ─ 少ない",
-        "▸ くまざわ書店 2/3", "岩倉店 ─ 多い", "名古屋南店 ─ 少ない",
-        "NAgoya Book Center ─ 多い"]                       # 1 店だけの系列は小見出し無し。在庫なしの TOUTEN は出ない
-    plain = CheckResult("k", "紀伊國屋", "https://k", stocks=r.stocks[:2])
-    assert "▸" not in "\n".join(chain_lines(plain))      # 通常のチェーンは従来どおり
+        "📚 **[書店在庫情報プロジェクト](https://h)** 愛知 5/7",
+        "🟠 **BOOKSえみたす** 2/2", "🟠 ピアゴ植田店 ─ 多い", "🟠 吉良店 ─ 少ない",
+        "🔵 **くまざわ書店** 2/3", "🔵 岩倉店 ─ 多い", "🔵 名古屋南店 ─ 少ない",
+        "🔹 NAgoya Book Center ─ 多い"]                    # 1 店だけの系列は小見出し無し。在庫なしの TOUTEN は出ない
+    plain = CheckResult("k", "紀伊國屋", "https://k", icon="📔", stocks=r.stocks[:2])
+    assert chain_lines(plain) == ["📔 **[紀伊國屋](https://k)** 2/2", "📔 NAgoya Book Center（愛知・名古屋市） ─ 多い",
+                                  "📔 くまざわ書店名古屋南店（愛知・名古屋市） ─ 少ない"]
+
+
+def test_icon_fallback_is_stable():
+    from bot.render import PALETTE, icon_for
+    assert icon_for("x", "📘") == "📘" and icon_for("くまざわ書店") == "🔵"
+    a = icon_for("未知の書店"); assert a in PALETTE and icon_for("未知の書店") == a
+    assert all(i not in ("🟢", "🟡", "🔴", "⚪") for i in PALETTE)

@@ -67,7 +67,8 @@ def test_region_mode_rendering():
     msgs = build_messages(code, BookMeta(title="t"), [hit, miss, local_link, far_link], "愛知", 1.0, "愛知",
                           serves={"a": True, "b": False, "c": True, "d": False})
     e = msgs[0][1]
-    assert e.description.split("\n") == ["**[A](https://a)** 1/1", "名古屋本店 ─ 多い", "🔗 [C](https://c)"]
+    from bot.render import icon_for
+    assert e.description.split("\n") == [f"{icon_for('A')} **[A](https://a)** 1/1", f"{icon_for('A')} 名古屋本店 ─ 多い", "🔗 [C](https://c)"]
     assert e.fields[-1].name.startswith("この地域に該当店舗なし")
     rest = e.fields[-1].value
     assert "[B](https://b)" in rest and "[D](https://d)" in rest and "行なし" in rest

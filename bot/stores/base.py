@@ -59,6 +59,7 @@ class CheckResult:
     message: str = ""
     verified: bool = True
     group_brands: bool = False   # 複数の書店系列が混ざる結果（書店在庫情報プロジェクト）。表示で系列ごとにまとめる
+    icon: str = ""               # 表示で各行の頭に付ける絵文字（stores.json の icon）。系列の見分け用
 
     def summarize(self) -> None:
         if self.stocks:
@@ -83,6 +84,7 @@ class StoreConfig:
     check_by: list[str] = field(default_factory=list)
     phone: str = ""
     hint: str = ""                                    # 一覧に添える短い説明（例: アピタ・ピアゴ内 約15店）
+    icon: str = ""                                    # 結果の各行の頭に付ける絵文字（系列の見分け用。無ければ自動で割り当て）
 
     def serves(self, keywords: list[str]) -> bool:
         """地域キーワードのどれかに出店しているか（prefectures 未設定なら不明＝True）。"""
@@ -348,7 +350,7 @@ class Checker:
         self.keywords = list(keywords or [])
         url = self.url_for(code)
         res = CheckResult(chain_id=self.cfg.id, chain=self.cfg.name, url=url or self.cfg.home,
-                          verified=self.cfg.verified)
+                          verified=self.cfg.verified, icon=self.cfg.icon)
         if not url:
             res.status, res.message = Status.LINK, "この店はこのコード種別では検索URLを作れません"
             return res
