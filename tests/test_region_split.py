@@ -40,14 +40,15 @@ def test_local_results_are_split_into_aichi_and_kyoto_sections():
                           serves={"mj": True, "ss": True, "ogaki": True, "yurindo": False}, groups=g)
     embeds = [e for m in msgs for e in m]
     titles = [e.title for e in embeds]
-    assert titles[0] == "t" and "愛知 🟢1 🟡1 ／ 京都 🟢1 🟡0" in embeds[0].description
+    assert titles[0] == "t" and "愛知 2店（多い1 少ない1） ／ 京都 1店（多い1 少ない0）" in embeds[0].description
     assert titles[1:4] == ["📍 愛知", "📍 京都", LINKS_SECTION]
     aichi, kyoto, links = embeds[1], embeds[2], embeds[3]
-    assert [f.name for f in aichi.fields] == ["🟢 三省堂書店", "🟡 丸善ジュンク堂書店"]
-    assert "名古屋本店（愛知・名古屋市） ×2" in aichi.fields[1].value and "京都本店" not in aichi.fields[1].value
-    assert aichi.fields[1].value.startswith("🟢0 🟡1 🔴1（確認 2店）")
-    assert [f.name for f in kyoto.fields] == ["🟢 丸善ジュンク堂書店"]
-    assert "京都本店（京都・京都市） ×6" in kyoto.fields[0].value and "名古屋" not in kyoto.fields[0].value
+    assert [f.name for f in aichi.fields] == ["三省堂書店", "丸善ジュンク堂書店"]
+    assert "丸善 名古屋本店 ─ 2個" in aichi.fields[1].value and "京都本店" not in aichi.fields[1].value
+    assert "（愛知" not in aichi.fields[1].value            # 区画名で分かる地域ラベルは出さない
+    assert aichi.fields[1].value.startswith("多い 0店 / 少ない 1店 / なし 1店（確認 2店）")
+    assert [f.name for f in kyoto.fields] == ["丸善ジュンク堂書店"]
+    assert "丸善 京都本店 ─ 6個" in kyoto.fields[0].value and "名古屋" not in kyoto.fields[0].value
     assert links.fields[0].name == "🔗 大垣書店"
     # 地域外のチェーンは従来どおり末尾の 1 フィールドにまとまる
     assert embeds[-1].fields[-1].name.startswith("この地域に該当店舗なし")
@@ -60,4 +61,4 @@ def test_single_region_is_not_split():
     r.summarize()
     msgs = build_messages(code, BookMeta(title="t"), [r], "愛知", 1.0, "愛知", serves={"ss": True},
                           groups=region_groups("愛知"))
-    assert [e.title for e in msgs[0]] == ["t"] and [f.name for f in msgs[0][0].fields] == ["🟢 三省堂書店"]
+    assert [e.title for e in msgs[0]] == ["t"] and [f.name for f in msgs[0][0].fields] == ["三省堂書店"]

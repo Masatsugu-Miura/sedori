@@ -16,7 +16,6 @@ from .lookup import GRAPH_FILENAME, BookMeta
 from .stores.base import CheckResult, Status, StoreConfig, StoreStock, assign_region
 
 COLOR = 0xF2B134
-MAX_ROWS = 10           # 1チェーンあたり表示する店舗行（在庫あり・わずか の店だけ）
 FIELD_LIMIT = 1000
 FIELDS_PER_EMBED = 10
 MESSAGE_CHAR_LIMIT = 5800   # 6000 に対して余裕
@@ -51,45 +50,71 @@ def manual_fields(manual: list[StoreConfig]) -> list[tuple[str, list[str]]]:
         if lines:
             out.append((label, lines))
     return out
-LEGEND = "🟢在庫あり 🟡わずか 🔴なし ⚪要確認 🔗リンク ⚠️失敗"
+LEGEND = "多い=在庫あり 少ない=在庫わずか ⚪要確認 🔗リンク ⚠️失敗"
+CONT_FIELD_NAME = "└ 続き"
 SHOWN = (Status.IN_STOCK, Status.LOW)   # 店舗行として出す状態（在庫なしの店は件数だけ）
 
 _COUNT = re.compile(r"(\d+)\s*[点冊個]|(?:残り|在庫数)[:：]?\s*(\d+)")
 _LABEL = re.compile(r"（([^（）]+)）\s*$")
+WORD = {Status.IN_STOCK: "多い", Status.LOW: "少ない", Status.OUT: "なし", Status.UNKNOWN: "要確認"}
+SEP = " ─ "
 
 
-def store_label(s: StoreStock) -> str:
-    """店名の表記をチェーン間で揃える: 『店名（県・市）』＋在庫数が分かれば『 ×N』。
-    『（愛知県）』は『（愛知）』に、注記の生テキスト（○ / あり / 在庫あり 6点 …）は出さない。"""
+def store_name(s: StoreStock, strip_label: bool = False) -> str:
+    """店名の表記を揃える。strip_label なら『（愛知・名古屋市）』の地域ラベルを落とす（地域ごとの区画では自明なので）。
+    残すときは『（愛知県）』を『（愛知）』に。"""
     name = s.store
     m = _LABEL.search(name)
-    if m:
-        parts = m.group(1).split("・")
-        if len(parts[0]) > 2 and parts[0].endswith(("県", "府", "都")):
-            parts[0] = parts[0][:-1]
-        name = name[:m.start()] + "（" + "・".join(parts) + "）"
+    if not m:
+        return name
+    if strip_label:
+        return name[:m.start()].rstrip()
+    parts = m.group(1).split("・")
+    if len(parts[0]) > 2 and parts[0].endswith(("県", "府", "都")):
+        parts[0] = parts[0][:-1]
+    return name[:m.start()] + "（" + "・".join(parts) + "）"
+
+
+def stock_word(s: StoreStock) -> str:
+    """在庫の言い方: 数が分かれば『2個』、分からなければ 多い / 少ない / なし。"""
     c = _COUNT.search(s.note or "")
     n = next((g for g in c.groups() if g), None) if c else None
-    return f"{name} ×{n}" if n else name
+    if n and s.status in SHOWN:
+        return f"{int(n)}個"
+    return WORD.get(s.status, "要確認")
+
+
+def row_text(s: StoreStock, strip_label: bool = False) -> str:
+    return f"{store_name(s, strip_label)}{SEP}{stock_word(s)}"
 
 
 def stock_summary(stocks: list[StoreStock]) -> str:
     counts = {st: sum(1 for s in stocks if s.status == st) for st in Status}
-    return (f"🟢{counts[Status.IN_STOCK]} 🟡{counts[Status.LOW]} 🔴{counts[Status.OUT]}"
+    return (f"多い {counts[Status.IN_STOCK]}店 / 少ない {counts[Status.LOW]}店 / なし {counts[Status.OUT]}店"
             f"（確認 {len(stocks)}店）")
 
 
-def field_value(r: CheckResult, max_rows: int = MAX_ROWS) -> str:
-    """どのチェーンも同じ並び: 1行目に件数、在庫あり→わずか の店だけ行で、残りは件数、最後にリンク。"""
+def _chunk(lines: list[str], limit: int = FIELD_LIMIT) -> list[str]:
+    """行を 1 フィールドの上限内で区切る。1 行が長すぎれば切り詰める。"""
+    chunks: list[list[str]] = [[]]
+    for ln in lines:
+        while ulen(ln) > limit:
+            ln = ln[:-(ulen(ln) - limit + 1)] + "…"
+        if chunks[-1] and sum(ulen(x) + 1 for x in chunks[-1]) + ulen(ln) > limit:
+            chunks.append([])
+        chunks[-1].append(ln)
+    return ["\n".join(c) for c in chunks if c]
+
+
+def field_values(r: CheckResult, strip_label: bool = False) -> list[str]:
+    """どのチェーンも同じ並び: 1行目に件数、在庫あり→少ない の店を全部（省略しない）、最後にリンク。
+    1 フィールドに収まらなければ複数の値に分ける（送る側は『└ 続き』の名前で続ける）。"""
     lines: list[str] = []
     if r.stocks:
         lines.append(stock_summary(r.stocks))
         shown = [s for s in r.stocks if s.status in SHOWN]
-        shown.sort(key=lambda s: s.status.rank)      # 🟢 → 🟡（同じ状態の中は元の順）
-        for s in shown[:max_rows]:
-            lines.append(f"{s.status.emoji} {store_label(s)}")
-        if len(shown) > max_rows:
-            lines.append(f"…他 {len(shown) - max_rows}店はリンク先で")
+        shown.sort(key=lambda s: s.status.rank)      # 多い → 少ない（同じ状態の中は元の順）
+        lines += [row_text(s, strip_label) for s in shown]
         if not shown:
             lines.append("在庫あり店舗なし")
     elif r.message:
@@ -98,10 +123,12 @@ def field_value(r: CheckResult, max_rows: int = MAX_ROWS) -> str:
         lines.append("※検索URL未検証（開けない場合は stores.json を修正）")
     if r.url:
         lines.append(f"[サイトで確認]({r.url})")
-    v = "\n".join(lines)
-    while ulen(v) > FIELD_LIMIT:
-        v = v[:-(ulen(v) - FIELD_LIMIT + 1)] + "…"
-    return v
+    return _chunk(lines) or ["-"]
+
+
+def field_value(r: CheckResult, strip_label: bool = False) -> str:
+    """旧 API 互換: 最初のフィールド分だけ。"""
+    return field_values(r, strip_label)[0]
 
 
 def ulen(s: str) -> int:
@@ -146,11 +173,6 @@ def split_by_region(results: list[CheckResult], groups: dict[str, list[str]]) ->
 def header_embed(code: Code, meta: BookMeta, results: list[CheckResult], area: Optional[str],
                  elapsed: float, scope_label: str = "全国", graph: Optional[bytes] = None,
                  groups: Optional[dict[str, list[str]]] = None) -> discord.Embed:
-    counts = {s: 0 for s in Status}
-    for r in results:
-        counts[r.status] += 1
-    chains = "  ".join(f"{s.emoji} {counts[s]}" for s in
-                       (Status.IN_STOCK, Status.LOW, Status.OUT, Status.UNKNOWN, Status.LINK, Status.ERROR))
     stores = [s for r in results for s in r.stocks]
     n_in = sum(1 for s in stores if s.status == Status.IN_STOCK)
     n_low = sum(1 for s in stores if s.status == Status.LOW)
@@ -160,17 +182,17 @@ def header_embed(code: Code, meta: BookMeta, results: list[CheckResult], area: O
     if meta.price:
         lines.append(meta.price)
     lines.append(f"検索範囲: **{scope_label}**" + (f"（店名に {area} 系の地名を含む店舗）" if area else ""))
-    lines.append(f"**在庫あり店舗 {n_in + n_low}店**（🟢{n_in} 🟡{n_low}）／ 確認 {len(stores)}店")
+    lines.append(f"**在庫あり店舗 {n_in + n_low}店**（多い{n_in} 少ない{n_low}）／ 確認 {len(stores)}店")
     if groups:
-        # 地域ごとの内訳（愛知 🟢3 🟡12 ／ 京都 🟢1 🟡2）
+        # 地域ごとの内訳（愛知 15店（多い3 少ない12） ／ 京都 3店（多い1 少ない2））
         parts = []
         for name, rs in split_by_region(results, groups).items():
             ss = [s for r in rs for s in r.stocks]
-            parts.append(f"{name} 🟢{sum(1 for s in ss if s.status == Status.IN_STOCK)}"
-                         f" 🟡{sum(1 for s in ss if s.status == Status.LOW)}")
+            a = sum(1 for s in ss if s.status == Status.IN_STOCK)
+            b = sum(1 for s in ss if s.status == Status.LOW)
+            parts.append(f"{name} {a + b}店（多い{a} 少ない{b}）")
         if parts:
             lines.append(" ／ ".join(parts))
-    lines.append(f"チェーン: {chains}")
     lines += [f"ℹ️ {n}" for n in code.notes]
     e = discord.Embed(title=(meta.title or "書誌情報なし")[:250], description="\n".join(lines)[:2000], color=COLOR)
     if meta.cover:
@@ -253,19 +275,26 @@ def build_messages(code: Code, meta: BookMeta, results: list[CheckResult], area:
         flush_embed()
         cur.title = title
 
-    if area and groups and len(groups) >= 2:
+    def add_chain(r: CheckResult, strip_label: bool) -> None:
+        """チェーン 1 つ分。店が多くて 1 フィールドに収まらなければ『└ 続き』で続ける（省略しない）。"""
+        name = r.chain if r.stocks else f"{r.status.emoji} {r.chain}"   # 店舗行の無いチェーンだけ 🔗/⚪/⚠️ を付ける
+        for i, v in enumerate(field_values(r, strip_label)):
+            add_field(name[:256] if i == 0 else CONT_FIELD_NAME, v)
+
+    split = bool(area and groups and len(groups) >= 2)
+    if split:
         for name, rs in split_by_region(results, groups).items():
             start_section(f"📍 {name}")
             for r in rs:
-                add_field(f"{r.status.emoji} {r.chain}"[:256], field_value(r) or "-")
+                add_chain(r, strip_label=True)      # 区画名で地域は分かるので『（愛知・名古屋市）』は出さない
         others = [r for r in results if not r.stocks]
         if others:
             start_section(LINKS_SECTION)
             for r in others:
-                add_field(f"{r.status.emoji} {r.chain}"[:256], field_value(r) or "-")
+                add_chain(r, strip_label=False)
     else:
         for r in results:
-            add_field(f"{r.status.emoji} {r.chain}"[:256], field_value(r) or "-")
+            add_chain(r, strip_label=False)
 
     def add_lines(name: str, lines: list[str]) -> None:
         """行のリストを 1 フィールドに。長ければ同じ見出しで複数フィールドに分ける。"""
@@ -280,7 +309,7 @@ def build_messages(code: Code, meta: BookMeta, results: list[CheckResult], area:
 
     fields = manual_fields(manual or [])
     if fields:
-        if area and groups and len(groups) >= 2:
+        if split:
             start_section(MANUAL_SECTION)
         for name, lines in fields:
             add_lines(name, lines)

@@ -46,34 +46,37 @@ def test_large_result_splits_within_limits():
     _total(msgs)
 
 
-def test_long_store_list_shows_in_stock_first_and_counts_rest():
+def test_long_store_list_shows_every_store_in_stock_first():
     c = codes.parse("9784101010014")
-    stocks = [StoreStock(f"店{j}", Status.LOW, "在庫僅少") for j in range(60)]
+    stocks = [StoreStock(f"ショッピングモール内の長い名前の店{j}", Status.LOW, "在庫僅少") for j in range(60)]
     stocks += [StoreStock("札幌本店", Status.OUT, "在庫なし"), StoreStock("新宿本店", Status.IN_STOCK, "在庫あり"),
-               StoreStock("梅田本店", Status.IN_STOCK, "在庫あり")] + [StoreStock(f"店x{j}", Status.OUT, "在庫なし") for j in range(9)]
+               StoreStock("梅田本店", Status.IN_STOCK, "在庫あり 6点")] + [StoreStock(f"店x{j}", Status.OUT, "在庫なし") for j in range(9)]
     r = CheckResult("k", "紀伊國屋", "https://k", stocks=stocks)
     r.summarize()
-    v = build_messages(c, BookMeta(), [r], None, 1.0)[0][0].fields[0].value
-    rows = v.split("\n")
-    assert rows[0] == "🟢2 🟡60 🔴10（確認 72店）"
-    assert rows[1] == "🟢 新宿本店" and rows[2] == "🟢 梅田本店" and rows[3] == "🟡 店0"
-    assert rows[11] == "…他 52店はリンク先で" and rows[12].startswith("[サイトで確認]") and len(v) <= 1024
-    assert "札幌本店" not in v      # 在庫なしの店は行に出さない
+    fields = [f for m in build_messages(c, BookMeta(), [r], None, 1.0) for e in m for f in e.fields]
+    assert fields[0].name == "紀伊國屋" and all(f.name == "└ 続き" for f in fields[1:]) and len(fields) >= 2
+    rows = "\n".join(f.value for f in fields).split("\n")
+    assert rows[0] == "多い 2店 / 少ない 60店 / なし 10店（確認 72店）"
+    assert rows[1] == "新宿本店 ─ 多い" and rows[2] == "梅田本店 ─ 6個" and rows[3] == "ショッピングモール内の長い名前の店0 ─ 少ない"
+    assert "ショッピングモール内の長い名前の店59 ─ 少ない" in rows and rows[-1].startswith("[サイトで確認]")
+    assert not any("…他" in x for x in rows)
+    assert "札幌本店" not in rows                       # 在庫なしの店は行に出さない（件数のみ）
+    assert all(len(f.value) <= 1024 for f in fields)
     # 在庫あり店舗が無いチェーン
     none = CheckResult("k", "紀伊國屋", "https://k", stocks=stocks[60:61])
     none.summarize()
     v2 = build_messages(c, BookMeta(), [none], None, 1.0)[0][0].fields[0].value
-    assert v2.split("\n")[:2] == ["🟢0 🟡0 🔴1（確認 1店）", "在庫あり店舗なし"]
+    assert v2.split("\n")[:2] == ["多い 0店 / 少ない 0店 / なし 1店（確認 1店）", "在庫あり店舗なし"]
 
 
-def test_store_label_is_unified_across_chains():
-    from bot.render import store_label
-    assert store_label(StoreStock("TSUTAYA 大曽根店（愛知県）", Status.IN_STOCK, "在庫あり")) == "TSUTAYA 大曽根店（愛知）"
-    assert store_label(StoreStock("丸善 京都本店（京都・京都市）", Status.IN_STOCK, "在庫あり 6点")) == "丸善 京都本店（京都・京都市） ×6"
-    assert store_label(StoreStock("丸善 名古屋本店（愛知・名古屋市）", Status.LOW, "残り2点")) == "丸善 名古屋本店（愛知・名古屋市） ×2"
-    assert store_label(StoreStock("名古屋本店", Status.IN_STOCK, "○")) == "名古屋本店"
-    assert store_label(StoreStock("札幌店（北海道）", Status.IN_STOCK, "あり")) == "札幌店（北海道）"
-    assert store_label(StoreStock("洛北店（京都市）", Status.LOW, "△")) == "洛北店（京都市）"
+def test_store_row_format():
+    from bot.render import row_text
+    assert row_text(StoreStock("TSUTAYA 大曽根店（愛知県）", Status.IN_STOCK, "在庫あり")) == "TSUTAYA 大曽根店（愛知） ─ 多い"
+    assert row_text(StoreStock("丸善 京都本店（京都・京都市）", Status.IN_STOCK, "在庫あり 6点")) == "丸善 京都本店（京都・京都市） ─ 6個"
+    assert row_text(StoreStock("丸善 名古屋本店（愛知・名古屋市）", Status.LOW, "残り2点"), strip_label=True) == "丸善 名古屋本店 ─ 2個"
+    assert row_text(StoreStock("名古屋本店", Status.IN_STOCK, "○")) == "名古屋本店 ─ 多い"
+    assert row_text(StoreStock("洛北店（京都市）", Status.LOW, "△"), strip_label=True) == "洛北店 ─ 少ない"
+    assert row_text(StoreStock("札幌店（北海道）", Status.OUT, "なし")) == "札幌店（北海道） ─ なし"
 
 
 def test_header_has_keepa_graph_and_store_totals():
