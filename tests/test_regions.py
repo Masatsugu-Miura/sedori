@@ -72,7 +72,7 @@ def test_region_mode_rendering():
     assert e.fields[-1].name.startswith("この地域に該当店舗なし")
     rest = e.fields[-1].value
     assert "[B](https://b)" in rest and "[D](https://d)" in rest and "行なし" in rest
-    assert "検索範囲: **愛知**" in msgs[0][0].description
+    assert "検索範囲" not in msgs[0][0].description and "在庫あり店舗" not in msgs[0][0].description
 
 
 def test_nationwide_rendering_has_no_rest_field():

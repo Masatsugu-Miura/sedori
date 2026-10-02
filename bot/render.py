@@ -252,16 +252,14 @@ def split_by_region(results: list[CheckResult], groups: dict[str, list[str]]) ->
 def header_embed(code: Code, meta: BookMeta, results: list[CheckResult], area: Optional[str],
                  elapsed: float, scope_label: str = "全国", graph: Optional[bytes] = None,
                  groups: Optional[dict[str, list[str]]] = None) -> discord.Embed:
-    stores = [s for r in results for s in r.stocks]
-    n_in = sum(1 for s in stores if s.status == Status.IN_STOCK)
-    n_low = sum(1 for s in stores if s.status == Status.LOW)
     lines = [code.label()]
     if meta.author or meta.publisher:
         lines.append(" / ".join(x for x in (meta.author, meta.publisher) if x))
     if meta.price:
         lines.append(meta.price)
-    lines.append(f"検索範囲: **{scope_label}**" + (f"（店名に {area} 系の地名を含む店舗）" if area else ""))
-    lines.append(f"**在庫あり店舗 {n_in + n_low}店**（多い{n_in} 少ない{n_low}）／ 確認 {len(stores)}店")
+    # 検索範囲と合計の行はユーザー希望で出さない（区画の見出しと地域ごとの内訳で分かる）。全国だけ一言添える
+    if not area:
+        lines.append(f"検索範囲: **{scope_label}**")
     if groups:
         # 地域ごとの内訳（愛知 15店（多い3 少ない12） ／ 京都 3店（多い1 少ない2））
         parts = []

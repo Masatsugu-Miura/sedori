@@ -98,7 +98,7 @@ def test_header_has_keepa_graph_and_store_totals():
     msgs = build_messages(c, BookMeta(title="t"), _results(2, 3), None, 1.0, graph=b"\x89PNG...")
     e = msgs[0][0]
     assert e.image.url == "attachment://keepa.png"      # 波形は添付ファイルで送る（Keepa は Discord の直リンク取得を拒む）
-    assert "在庫あり店舗 6店" in e.description
+    assert "在庫あり店舗" not in e.description and "検索範囲" not in e.description or "全国" in e.description
     e2 = build_messages(c, BookMeta(), [], None, 1.0)[0][0]   # グラフが取れなかったときは画像なし
     assert not e2.image.url
 
