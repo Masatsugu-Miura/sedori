@@ -17,6 +17,7 @@ from .stores.base import CheckResult, Status, StoreConfig, StoreStock, assign_re
 
 COLOR = 0xF2B134
 FIELD_LIMIT = 1000
+DESC_LIMIT = 4000       # Embed の description 上限 4096 に対して余裕
 FIELDS_PER_EMBED = 10
 MESSAGE_CHAR_LIMIT = 5800   # 6000 に対して余裕
 # Discord は文字数とは別に、Embed 本文の UTF-8 バイト数が約 10KB を超えると 413 (Request entity too large) を返す
@@ -129,6 +130,20 @@ def field_values(r: CheckResult, strip_label: bool = False) -> list[str]:
 def field_value(r: CheckResult, strip_label: bool = False) -> str:
     """旧 API 互換: 最初のフィールド分だけ。"""
     return field_values(r, strip_label)[0]
+
+
+def chain_lines(r: CheckResult, region: str = "", strip_label: bool = False) -> list[str]:
+    """チェーン 1 つ分を本文の行に。1 行目が『**[チェーン名](リンク)** 愛知 5/25』（在庫あり店数/確認店数）、
+    続けて在庫あり→少ない の店を全部。店舗行の無いチェーンは『🔗 [名前](リンク) メッセージ』の 1 行だけ。"""
+    link = f"[{r.chain}]({r.url})" if r.url else r.chain
+    if r.stocks:
+        shown = sorted((s for s in r.stocks if s.status in SHOWN), key=lambda s: s.status.rank)
+        head = f"**{link}** {region + ' ' if region else ''}{len(shown)}/{len(r.stocks)}"
+        return [head] + [row_text(s, strip_label) for s in shown]
+    extra = f" {r.message}" if r.message else ""
+    if not r.verified:
+        extra += " ※URL未検証"
+    return [f"{r.status.emoji} {link}{extra}"]
 
 
 def ulen(s: str) -> int:
@@ -244,9 +259,12 @@ def build_messages(code: Code, meta: BookMeta, results: list[CheckResult], area:
     if area:
         results, rest = split_for_region(results, serves or {})
 
+    def has_content(e: discord.Embed) -> bool:
+        return bool(e.fields or e.title or e.description)
+
     def flush_embed() -> None:
         nonlocal cur, cur_len, cur_bytes, cur_msg
-        if cur is not None and (cur.fields or cur.title):
+        if cur is not None and has_content(cur):
             cur_msg.append(cur)
             cur_len += _embed_len(cur)
             cur_bytes += _embed_bytes(cur)
@@ -258,43 +276,57 @@ def build_messages(code: Code, meta: BookMeta, results: list[CheckResult], area:
             messages.append(cur_msg)
         cur_msg, cur_len, cur_bytes = [], 0, 0
 
+    def make_room(add_ulen: int, add_bytes: int) -> None:
+        """これから add_ulen 文字 / add_bytes バイト足すとメッセージの上限を超えるなら、Embed とメッセージを区切る。"""
+        if (cur_len + _embed_len(cur) + add_ulen > MESSAGE_CHAR_LIMIT
+                or cur_bytes + _embed_bytes(cur) + add_bytes > MESSAGE_BYTE_LIMIT
+                or len(cur_msg) >= 10 - 1 and has_content(cur)):
+            flush_embed()
+            flush_message()
+
     def add_field(name: str, value: str) -> None:
         """1 フィールド追加。Embed あたりのフィールド数・メッセージあたりの Embed 数／文字数を超えるなら先に区切る。"""
         if len(cur.fields) >= FIELDS_PER_EMBED:
             flush_embed()
-        add_bytes = len(name.encode("utf-8")) + len(value.encode("utf-8"))
-        if (cur_len + _embed_len(cur) + ulen(name) + ulen(value) > MESSAGE_CHAR_LIMIT
-                or cur_bytes + _embed_bytes(cur) + add_bytes > MESSAGE_BYTE_LIMIT
-                or len(cur_msg) >= 10 - 1 and cur.fields):
-            flush_embed()
-            flush_message()
+        make_room(ulen(name) + ulen(value), len(name.encode("utf-8")) + len(value.encode("utf-8")))
         cur.add_field(name=name, value=value, inline=False)
+
+    def add_line(ln: str) -> None:
+        """本文（description）に 1 行足す。description の上限を超えるなら続きの Embed に、メッセージの上限なら次のメッセージに。"""
+        while ulen(ln) > DESC_LIMIT:
+            ln = ln[:-(ulen(ln) - DESC_LIMIT + 1)] + "…"
+        d = cur.description or ""
+        if d and ulen(d) + 1 + ulen(ln) > DESC_LIMIT:
+            flush_embed()
+            d = ""
+        make_room(ulen(ln) + 1, len(ln.encode("utf-8")) + 1)
+        d = cur.description or ""
+        cur.description = f"{d}\n{ln}" if d else ln
 
     def start_section(title: str) -> None:
         """『📍 愛知』のような見出し付きの Embed を新しく始める。"""
         flush_embed()
         cur.title = title
 
-    def add_chain(r: CheckResult, strip_label: bool) -> None:
-        """チェーン 1 つ分。店が多くて 1 フィールドに収まらなければ『└ 続き』で続ける（省略しない）。"""
-        name = r.chain if r.stocks else f"{r.status.emoji} {r.chain}"   # 店舗行の無いチェーンだけ 🔗/⚪/⚠️ を付ける
-        for i, v in enumerate(field_values(r, strip_label)):
-            add_field(name[:256] if i == 0 else CONT_FIELD_NAME, v)
+    def add_chain(r: CheckResult, region: str = "", strip_label: bool = False) -> None:
+        for ln in chain_lines(r, region, strip_label):
+            add_line(ln)
 
     split = bool(area and groups and len(groups) >= 2)
+    flush_embed()                                   # 書誌のヘッダーは単独の Embed にして、チェーンは本文に並べる
     if split:
         for name, rs in split_by_region(results, groups).items():
             start_section(f"📍 {name}")
             for r in rs:
-                add_chain(r, strip_label=True)      # 区画名で地域は分かるので『（愛知・名古屋市）』は出さない
+                add_chain(r, region=name, strip_label=True)   # 区画名で地域は分かるので『（愛知・名古屋市）』は出さない
         others = [r for r in results if not r.stocks]
         if others:
             start_section(LINKS_SECTION)
             for r in others:
-                add_chain(r, strip_label=False)
+                add_chain(r)
     else:
         for r in results:
-            add_chain(r, strip_label=False)
+            add_chain(r)
 
     def add_lines(name: str, lines: list[str]) -> None:
         """行のリストを 1 フィールドに。長ければ同じ見出しで複数フィールドに分ける。"""

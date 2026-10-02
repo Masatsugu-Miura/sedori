@@ -66,17 +66,16 @@ def test_region_mode_rendering():
     far_link = CheckResult("d", "D", "https://d", status=Status.LINK)
     msgs = build_messages(code, BookMeta(title="t"), [hit, miss, local_link, far_link], "愛知", 1.0, "愛知",
                           serves={"a": True, "b": False, "c": True, "d": False})
-    e = msgs[0][0]
-    names = [f.name for f in e.fields]
-    assert names[0].endswith("A") and names[1].endswith("C")
-    assert names[-1].startswith("この地域に該当店舗なし")
+    e = msgs[0][1]
+    assert e.description.split("\n") == ["**[A](https://a)** 1/1", "名古屋本店 ─ 多い", "🔗 [C](https://c)"]
+    assert e.fields[-1].name.startswith("この地域に該当店舗なし")
     rest = e.fields[-1].value
     assert "[B](https://b)" in rest and "[D](https://d)" in rest and "行なし" in rest
-    assert "検索範囲: **愛知**" in e.description
+    assert "検索範囲: **愛知**" in msgs[0][0].description
 
 
 def test_nationwide_rendering_has_no_rest_field():
     code = codes.parse("9784101010014")
     r = CheckResult("b", "B", "https://b", status=Status.OUT, message="x")
     msgs = build_messages(code, BookMeta(), [r], None, 1.0)
-    assert [f.name for f in msgs[0][0].fields] == ["🔴 B"] and "全国" in msgs[0][0].description
+    assert msgs[0][1].description == "🔴 [B](https://b) x" and "全国" in msgs[0][0].description

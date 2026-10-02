@@ -46,4 +46,4 @@ def test_manual_section_rendered_after_stock_sections():
     assert "BOOKSえみたす" in text and "075-431-2937" in text
     # 全国・単一地域では見出し Embed を作らずフィールドとして続ける
     msgs2 = build_messages(code, BookMeta(title="t"), [r], None, 1.0, manual=manual_checks(None))
-    assert [e.title for e in msgs2[0]] == ["t"] and any(f.name.startswith("📞 電話") for f in msgs2[0][0].fields)
+    assert [e.title for e in msgs2[0]] == ["t", None] and any(f.name.startswith("📞 電話") for f in msgs2[0][1].fields)

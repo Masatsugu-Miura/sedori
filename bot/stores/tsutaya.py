@@ -86,7 +86,9 @@ class TsutayaChecker(Checker):
             terms, max_pages = NATIONAL_TERMS, NATIONAL_MAX_PAGES   # リンクは店舗検索ページのまま（語を選べる）
         else:
             max_pages = MAX_PAGES
-            res.url = result_url(stock_url, terms[0])
+            if len(terms) == 1:
+                res.url = result_url(stock_url, terms[0])   # 地域が 1 つなら、その地域の結果ページを直接開ける
+            # 地元（愛知＋京都）のように複数地域なら、語を選べる店舗検索ページのままにする
         sem = asyncio.Semaphore(PARALLEL)
         deadline = time.monotonic() + NATIONAL_BUDGET_SEC
         left = [NATIONAL_MAX_PAGES]      # 全国指定での残りページ数（全語で共有）

@@ -1,6 +1,6 @@
 from bot import codes
 from bot.lookup import BookMeta
-from bot.render import build_messages
+from bot.render import build_messages, ulen
 from bot.stores.base import CheckResult, Status, StoreStock
 
 
@@ -26,11 +26,25 @@ def _total(msgs):
     return n
 
 
+def _body(msgs) -> str:
+    """ヘッダー以外の Embed の本文（description）とフィールドを全部つなげる。"""
+    out = []
+    for i, m in enumerate(msgs):
+        for j, e in enumerate(m):
+            if i == 0 and j == 0:
+                continue                                  # 先頭は書誌のヘッダー
+            if e.description:
+                out.append(e.description)
+            out += [f"{f.name}\n{f.value}" for f in e.fields]
+    return "\n".join(out)
+
+
 def test_small_result_is_single_message():
     c = codes.parse("9784101010014")
     msgs = build_messages(c, BookMeta(title="テスト"), _results(3, 2), None, 0.4)
     assert len(msgs) == 1 and msgs[0][0].title == "テスト"
-    assert sum(len(e.fields) for e in msgs[0]) == 3
+    body = _body(msgs)
+    assert body.count("**[チェーン") == 3 and "](https://example.com/" in body
 
 
 def test_large_result_splits_within_limits():
@@ -42,31 +56,29 @@ def test_large_result_splits_within_limits():
         total = sum(len(e.title or "") + len(e.description or "") + (len(e.footer.text) if e.footer and e.footer.text else 0)
                     + sum(len(f.name) + len(f.value) for f in e.fields) for e in embeds)
         assert total <= 6000
-    assert sum(len(e.fields) for m in msgs for e in m) == 40
+    assert _body(msgs).count("**[チェーン") == 40
     _total(msgs)
 
 
 def test_long_store_list_shows_every_store_in_stock_first():
     c = codes.parse("9784101010014")
-    stocks = [StoreStock(f"ショッピングモール内の長い名前の店{j}", Status.LOW, "在庫僅少") for j in range(60)]
+    stocks = [StoreStock(f"ショッピングモール内の長い名前の店{j}", Status.LOW, "在庫僅少") for j in range(200)]
     stocks += [StoreStock("札幌本店", Status.OUT, "在庫なし"), StoreStock("新宿本店", Status.IN_STOCK, "在庫あり"),
                StoreStock("梅田本店", Status.IN_STOCK, "在庫あり 6点")] + [StoreStock(f"店x{j}", Status.OUT, "在庫なし") for j in range(9)]
     r = CheckResult("k", "紀伊國屋", "https://k", stocks=stocks)
     r.summarize()
-    fields = [f for m in build_messages(c, BookMeta(), [r], None, 1.0) for e in m for f in e.fields]
-    assert fields[0].name == "紀伊國屋" and all(f.name == "└ 続き" for f in fields[1:]) and len(fields) >= 2
-    rows = "\n".join(f.value for f in fields).split("\n")
-    assert rows[0] == "多い 2店 / 少ない 60店 / なし 10店（確認 72店）"
+    msgs = build_messages(c, BookMeta(), [r], None, 1.0)
+    embeds = [e for m in msgs for e in m]
+    assert len(embeds) >= 3 and all(ulen(e.description or "") <= 4096 for e in embeds)   # 続きの Embed に分かれる
+    rows = _body(msgs).split("\n")
+    assert rows[0] == "**[紀伊國屋](https://k)** 202/212"          # 在庫あり店数/確認店数、リンクは名前に
     assert rows[1] == "新宿本店 ─ 多い" and rows[2] == "梅田本店 ─ 6個" and rows[3] == "ショッピングモール内の長い名前の店0 ─ 少ない"
-    assert "ショッピングモール内の長い名前の店59 ─ 少ない" in rows and rows[-1].startswith("[サイトで確認]")
-    assert not any("…他" in x for x in rows)
-    assert "札幌本店" not in rows                       # 在庫なしの店は行に出さない（件数のみ）
-    assert all(len(f.value) <= 1024 for f in fields)
-    # 在庫あり店舗が無いチェーン
-    none = CheckResult("k", "紀伊國屋", "https://k", stocks=stocks[60:61])
+    assert "ショッピングモール内の長い名前の店199 ─ 少ない" in rows and not any("…他" in x or "サイトで確認" in x for x in rows)
+    assert "札幌本店" not in rows                       # 在庫なしの店は行に出さない
+    # 在庫あり店舗が無いチェーンは 1 行だけ
+    none = CheckResult("k", "紀伊國屋", "https://k", stocks=stocks[:0] + [StoreStock("札幌本店", Status.OUT, "在庫なし")])
     none.summarize()
-    v2 = build_messages(c, BookMeta(), [none], None, 1.0)[0][0].fields[0].value
-    assert v2.split("\n")[:2] == ["多い 0店 / 少ない 0店 / なし 1店（確認 1店）", "在庫あり店舗なし"]
+    assert _body(build_messages(c, BookMeta(), [none], None, 1.0)) == "**[紀伊國屋](https://k)** 0/1"
 
 
 def test_store_row_format():
@@ -102,8 +114,8 @@ def test_error_and_unverified_rows():
     c = codes.parse("B0C1234XYZ")
     r = CheckResult("h", "honto", "https://y", status=Status.ERROR, message="HTTP 503", verified=False)
     msgs = build_messages(c, BookMeta(), [r], None, 1.0)
-    v = msgs[0][0].fields[0].value
-    assert "HTTP 503" in v and "未検証" in v and "https://y" in v
+    v = _body(msgs)
+    assert v == "⚠️ [honto](https://y) HTTP 503 ※URL未検証"
     assert "書誌情報なし" == msgs[0][0].title
 
 
