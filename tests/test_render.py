@@ -199,10 +199,10 @@ def test_amazon_line_and_parser():
     a = parse_amazon(html, "4101010013")
     assert a.price == "￥693" and a.other_price == "￥318" and a.availability.startswith("在庫あり") and a.fetched
     line = amazon_line(a)
-    assert line == ("Amazon ￥693 ／ 中古 ￥318〜 ・ [商品ページ](https://www.amazon.co.jp/dp/4101010013)"
+    assert line == ("[Amazon](https://www.amazon.co.jp/dp/4101010013) ￥693 ／ 中古 ￥318〜"
                     " ・ [Keepa](https://keepa.com/#!product/5-4101010013)")
     blocked = AmazonInfo(asin="4101010013")
-    assert amazon_line(blocked).startswith("Amazon 価格取得できず") and "[Keepa]" in amazon_line(blocked)
+    assert amazon_line(blocked).startswith("[Amazon](https://www.amazon.co.jp/dp/4101010013) 価格取得できず") and "[Keepa]" in amazon_line(blocked)
     c = codes.parse("9784101010014")
     meta = BookMeta(title="t", price="¥629（税抜）", amazon=a)
     e = build_messages(c, meta, [], None, 1.0)[0][0]

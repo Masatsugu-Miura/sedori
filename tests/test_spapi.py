@@ -21,7 +21,7 @@ def test_summarize_prefers_buybox_and_landed_used_price():
     d = spapi.summarize(NEW, USED)
     assert d == {"price": "￥693", "other_price": "￥318", "new_count": 7, "used_count": 23, "fba_new": "￥693"}
     a = AmazonInfo(asin="4101010013", fetched=True, source="spapi", **d)
-    assert amazon_line(a).startswith("Amazon ￥693（新品 7件） ／ 中古 ￥318〜（23件） ・ [商品ページ]")
+    assert amazon_line(a).startswith("[Amazon](https://www.amazon.co.jp/dp/4101010013) ￥693（新品 7件） ／ 中古 ￥318〜（23件） ・ [Keepa]")
 
 
 def test_summarize_without_buybox_uses_lowest_new():
