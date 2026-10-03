@@ -47,7 +47,8 @@
 
 ## 運用メモ（管理者向け）
 
-- bot は自宅 PC の `sedori` フォルダの `start.bat` で起動。黒い画面を閉じると止まる。
+- bot は自宅 PC の `sedori` フォルダの `start.bat`（黒い画面つき）か `start_hidden.vbs`（画面なし、ログは `data\bot.log`）で起動。
+  止めるのは黒い画面を閉じるか `stop.bat`。サインイン時の自動起動は `autostart.bat`。
 - 更新は `update.bat` をダブルクリック → 黒い画面を閉じて `start.bat` をもう一度（`.env` は残る）。
 - 設定は `.env`（トークン、Webhook、検索範囲の既定、待機時間など）。
 - 店の追加・無効化は `/addstore` `/togglestore`（サーバー管理権限が必要）か `stores.json`。
