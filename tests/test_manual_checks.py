@@ -47,7 +47,7 @@ def test_manual_section_rendered_after_stock_sections():
     by = {f.name: f.value for f in sec.fields}
     assert "精文館書店" in by["📱 ほんらぶ（日販のアプリ）（愛知）"] and "三盛堂書店（京都市）" in by["📞 電話で確認（京都）"]
     assert "075-" not in by["📞 電話で確認（京都）"]
-    assert "三盛堂" not in by["📞 電話で確認（愛知）"] and "（京都" not in by["📞 電話で確認（京都）"]   # 地名は消してある
+    assert "三盛堂" not in by["📞 電話で確認（愛知）"] and "（京都・" not in by["📞 電話で確認（京都）"]   # 旧ラベル『（京都・千本）』は無い
     assert "ヴィレッジヴァンガード" in by["📞 電話で確認（愛知）"] and "ヴィレッジヴァンガード" in by["📞 電話で確認（京都）"]
     # 全国・単一地域では見出し Embed を作らずフィールドとして続ける
     msgs2 = build_messages(code, BookMeta(title="t"), [r], None, 1.0, manual=manual_checks(None))
