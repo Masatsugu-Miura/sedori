@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from bot import codes  # noqa: E402
-from bot.lookup import GRAPH_FILENAME, fetch_amazon, fetch_keepa_graph, fetch_meta, merge_amazon, resolve_asin  # noqa: E402
+from bot.lookup import GRAPH_FILENAME, fetch_amazon, fetch_keepa_graph, fetch_meta, merge_amazon, resolve_asin, resolve_jan_asin  # noqa: E402
 from bot.render import build_messages  # noqa: E402
 from bot.stores import check_all, load_configs, manual_checks, region_groups, region_keywords  # noqa: E402
 
@@ -50,6 +50,8 @@ async def main() -> None:
     async with aiohttp.ClientSession(trust_env=True) as session:
         if code.kind == "ASIN" and not code.isbn13:
             await resolve_asin(session, code)
+        if not code.asin and code.jan and not code.isbn13:
+            await resolve_jan_asin(session, code)
         meta, graph, amazon = await asyncio.gather(fetch_meta(session, code), fetch_keepa_graph(session, code.asin),
                                                    fetch_amazon(session, code.asin))
         merge_amazon(meta, amazon)

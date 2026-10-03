@@ -53,3 +53,26 @@ def test_catalog_summary_and_merge():
     assert m.title == "吾輩は猫である (新潮文庫)" and m.cover.endswith("big.jpg") and m.amazon is a
     kept = merge_amazon(BookMeta(title="openBD の書名", cover="https://cover/x.jpg"), a)
     assert kept.title == "openBD の書名" and kept.cover == "https://cover/x.jpg"     # 既にあるものは上書きしない
+
+
+def test_search_asin_parser_skips_sponsored():
+    from bot.lookup import parse_search_asin
+    html = ('<div data-asin="B0SPONSOR1" data-component-type="s-search-result" class="AdHolder s-result-item"></div>'
+            '<div data-asin="" data-component-type="s-search-result"></div>'
+            '<div data-asin="B0REAL0001" data-component-type="s-search-result" class="s-result-item"></div>')
+    assert parse_search_asin(html) == "B0REAL0001"
+    assert parse_search_asin("<html></html>") == ""
+
+
+def test_jan_resolution_via_spapi(monkeypatch):
+    import asyncio
+    from bot import codes, lookup
+    monkeypatch.setenv("SPAPI_CLIENT_ID", "a"); monkeypatch.setenv("SPAPI_CLIENT_SECRET", "b"); monkeypatch.setenv("SPAPI_REFRESH_TOKEN", "c")
+    async def fake_search(session, jan):
+        assert jan == "4912121661168"
+        return {"asin": "B0MAGAZINE", "title": "週刊少年ジャンプ 2026年 10/12 号", "image": "https://m.media-amazon.com/images/I/mag.jpg"}
+    monkeypatch.setattr(spapi, "search_by_jan", fake_search)
+    code = codes.parse("4912121661168")
+    assert code.jan == "4912121661168" and not code.isbn13 and not code.asin
+    asin = asyncio.run(lookup.resolve_jan_asin(None, code))
+    assert asin == "B0MAGAZINE" and code.asin == "B0MAGAZINE" and lookup._jan_meta["B0MAGAZINE"]["title"].startswith("週刊少年ジャンプ")

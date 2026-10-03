@@ -208,9 +208,10 @@ async def fetch_amazon(session: aiohttp.ClientSession, asin: Optional[str]) -> O
     if spapi.configured():
         try:
             d = await spapi.fetch_prices(session, asin)
+            jm = _jan_meta.get(asin, {})
             return AmazonInfo(asin=asin, price=d["price"], other_price=d["other_price"], fetched=True,
                               new_count=d["new_count"], used_count=d["used_count"], fba_new=d["fba_new"], source="spapi",
-                              title=d.get("title", ""), image=d.get("image", ""))
+                              title=d.get("title") or jm.get("title", ""), image=d.get("image") or jm.get("image", ""))
         except Exception as e:  # noqa: BLE001
             import logging   # noqa: PLC0415
             logging.getLogger("zaikobot").warning("SP-API で価格を取れず、商品ページに切り替え: %s", e)
@@ -229,6 +230,61 @@ async def fetch_amazon(session: aiohttp.ClientSession, asin: Optional[str]) -> O
     info = parse_amazon(html, asin)
     info.source = "page"
     return info
+
+
+_SEARCH_ASIN = re.compile(r'data-asin="([A-Z0-9]{10})"[^>]*data-component-type="s-search-result"')
+_SEARCH_ASIN2 = re.compile(r'data-component-type="s-search-result"[^>]*data-asin="([A-Z0-9]{10})"')
+
+
+def parse_search_asin(html: str) -> str:
+    """Amazon 検索結果ページから最初の商品の ASIN（広告枠は飛ばす）。"""
+    for m in re.finditer(r'<div[^>]*data-component-type="s-search-result"[^>]*>', html):
+        tag = m.group(0)
+        if "AdHolder" in tag or "sponsored" in tag.lower():
+            continue
+        a = re.search(r'data-asin="([A-Z0-9]{10})"', tag)
+        if a:
+            return a.group(1)
+    return ""
+
+
+async def resolve_jan_asin(session: aiohttp.ClientSession, code: Code) -> Optional[str]:
+    """ISBN でない JAN（雑誌コード 491… など）から ASIN を探して code.asin に入れる。
+    SP-API があればカタログ検索（確実）、無ければ Amazon の検索ページ（確認ページが出れば諦める）。
+    見つかれば書名・画像も code.notes ではなく戻り値の AmazonInfo 用に _jan_meta へ保存する。"""
+    if code.asin or not code.jan or code.isbn13:
+        return None
+    from . import spapi   # noqa: PLC0415
+    if spapi.configured():
+        try:
+            d = await spapi.search_by_jan(session, code.jan)
+            if d.get("asin"):
+                code.asin = d["asin"]
+                _jan_meta[code.asin] = {"title": d.get("title", ""), "image": d.get("image", "")}
+                return code.asin
+        except Exception as e:  # noqa: BLE001
+            import logging   # noqa: PLC0415
+            logging.getLogger("zaikobot").warning("SP-API の JAN 検索に失敗、検索ページに切り替え: %s", e)
+    url = f"https://www.amazon.co.jp/s?k={code.jan}"
+    html = ""
+    try:
+        async with session.get(url, headers=HEADERS, timeout=aiohttp.ClientTimeout(total=15)) as r:
+            if r.status == 200:
+                html = await r.text(errors="replace")
+    except Exception:  # noqa: BLE001
+        pass
+    if not html or _is_amazon_block(html):
+        html = await _fetch_amazon_curl(url)
+    if html and not _is_amazon_block(html):
+        asin = parse_search_asin(html)
+        if asin:
+            code.asin = asin
+            return asin
+    code.notes.append("雑誌コードから Amazon の商品を特定できませんでした（SP-API のキーがあれば特定できます）。")
+    return None
+
+
+_jan_meta: dict[str, dict] = {}   # JAN 検索で分かった商品名・画像（ASIN → {title, image}）
 
 
 async def resolve_asin(session: aiohttp.ClientSession, code: Code) -> Optional[str]:

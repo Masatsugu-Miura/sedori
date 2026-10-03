@@ -119,6 +119,25 @@ async def get_catalog_item(session: aiohttp.ClientSession, asin: str) -> dict:
     return catalog_summary(body)
 
 
+async def search_by_jan(session: aiohttp.ClientSession, jan: str) -> dict:
+    """JAN（雑誌コードなど ISBN でないもの）から Catalog Items API で ASIN・商品名・画像を探す → {"asin","title","image"}。"""
+    token = await access_token(session)
+    url = f"{ENDPOINT}/catalog/2022-04-01/items"
+    params = {"marketplaceIds": marketplace(), "identifiers": jan, "identifiersType": "JAN",
+              "includedData": "summaries,images", "pageSize": 1}
+    async with session.get(url, params=params, headers={"x-amz-access-token": token, "Accept": "application/json"},
+                           timeout=TIMEOUT) as r:
+        body = await r.json(content_type=None)
+        if r.status != 200:
+            raise RuntimeError(f"SP-API catalog search HTTP {r.status}: {str(body)[:200]}")
+    items = body.get("items") or []
+    if not items:
+        return {"asin": "", "title": "", "image": ""}
+    out = catalog_summary(items[0])
+    out["asin"] = items[0].get("asin") or ""
+    return out
+
+
 def catalog_summary(body: dict) -> dict:
     title = ""
     for s in body.get("summaries") or []:
