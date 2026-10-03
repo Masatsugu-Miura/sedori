@@ -86,7 +86,8 @@ class StoreConfig:
     # 『📱 アプリで確認』『📞 電話で確認』としてまとめて出す。値は ほんらぶ / 本コレ / Honya Club / 電話
     check_by: list[str] = field(default_factory=list)
     phone: str = ""
-    hint: str = ""                                    # 一覧に添える短い説明（例: アピタ・ピアゴ内 約15店）
+    hint: str = ""                                    # メモ（表示には使わない）
+    city: str = ""                                    # 一覧に添える市（例: 名古屋市 / 津島市ほか）
     icon: str = ""                                    # 結果の各行の頭に付ける絵文字（系列の見分け用。無ければ自動で割り当て）
 
     def serves(self, keywords: list[str]) -> bool:

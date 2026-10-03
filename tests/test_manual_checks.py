@@ -22,12 +22,12 @@ def test_manual_checks_filtered_by_area():
 
 
 def test_manual_fields_grouped_by_method():
-    cfgs = [StoreConfig(id="a", name="えみたす", search="", enabled=False, check_by=["ほんらぶ", "本コレ"], hint="約15店"),
-            StoreConfig(id="b", name="三盛堂", search="", enabled=False, check_by=["電話"], phone="075-431-2937", hint="千本"),
+    cfgs = [StoreConfig(id="a", name="えみたす", search="", enabled=False, check_by=["ほんらぶ", "本コレ"], city="名古屋市ほか"),
+            StoreConfig(id="b", name="三盛堂", search="", enabled=False, check_by=["電話"], phone="075-431-2937", city="京都市"),
             StoreConfig(id="c", name="対象外", search="", enabled=False)]
     fields = manual_fields(cfgs)
     assert [n for n, _ in fields] == ["📱 ほんらぶ（日販のアプリ）", "📱 本コレ（TSUTAYA / CCC のアプリ）", "📞 電話で確認"]
-    assert fields[0][1] == ["えみたす（約15店）"] and fields[2][1] == ["三盛堂 `075-431-2937`（千本）"]
+    assert fields[0][1] == ["えみたす（名古屋市ほか）"] and fields[2][1] == ["三盛堂（京都市）"]   # 電話番号・説明は出さない
 
 
 def test_manual_section_rendered_after_stock_sections():
@@ -45,7 +45,8 @@ def test_manual_section_rendered_after_stock_sections():
     assert names[0].startswith("📱 ほんらぶ（日販のアプリ）（愛知）") and "📞 電話で確認（愛知）" in names and "📞 電話で確認（京都）" in names
     assert names.index("📞 電話で確認（愛知）") < names.index("📞 電話で確認（京都）")
     by = {f.name: f.value for f in sec.fields}
-    assert "精文館書店" in by["📱 ほんらぶ（日販のアプリ）（愛知）"] and "三盛堂書店 `075-431-2937`" in by["📞 電話で確認（京都）"]
+    assert "精文館書店" in by["📱 ほんらぶ（日販のアプリ）（愛知）"] and "三盛堂書店（京都市）" in by["📞 電話で確認（京都）"]
+    assert "075-" not in by["📞 電話で確認（京都）"]
     assert "三盛堂" not in by["📞 電話で確認（愛知）"] and "（京都" not in by["📞 電話で確認（京都）"]   # 地名は消してある
     assert "ヴィレッジヴァンガード" in by["📞 電話で確認（愛知）"] and "ヴィレッジヴァンガード" in by["📞 電話で確認（京都）"]
     # 全国・単一地域では見出し Embed を作らずフィールドとして続ける

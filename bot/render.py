@@ -35,12 +35,8 @@ MANUAL_METHODS = [("ほんらぶ", "📱 ほんらぶ（日販のアプリ）"),
 
 
 def _manual_line(c: StoreConfig, key: str) -> str:
-    line = c.name
-    if key == "電話" and c.phone:
-        line += f" `{c.phone}`"
-    if c.hint:
-        line += f"（{c.hint}）"
-    return line
+    """『店名（市）』だけ。電話番号や説明は出さない（ユーザー希望）。"""
+    return f"{c.name}（{c.city}）" if c.city else c.name
 
 
 def manual_fields(manual: list[StoreConfig],
