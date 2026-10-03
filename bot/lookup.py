@@ -156,6 +156,13 @@ def parse_amazon(html: str, asin: str) -> AmazonInfo:
     av = soup.select_one("#availability")
     if av:
         info.availability = re.sub(r"\s+", " ", av.get_text(" ", strip=True))[:30]
+    # 書名・商品画像（openBD に無い本や雑誌 JAN の補完用）
+    t = soup.select_one("#productTitle")
+    if t:
+        info.title = re.sub(r"\s+", " ", t.get_text(" ", strip=True))[:120]
+    img = soup.select_one("#landingImage, #imgBlkFront, #ebooksImgBlkFront")
+    if img:
+        info.image = img.get("data-old-hires") or img.get("src") or ""
     return info
 
 

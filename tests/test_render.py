@@ -195,9 +195,12 @@ def test_amazon_line_and_parser():
     html = """<html><body>
       <div id="corePriceDisplay_desktop_feature_div"><span class="a-price"><span class="a-offscreen">￥693</span></span></div>
       <div id="olp_feature_div"><a class="olp-link">その他中古品、新品、コレクター商品 が ￥318から</a></div>
-      <div id="availability"><span> 在庫あり。 </span></div></body></html>"""
+      <div id="availability"><span> 在庫あり。 </span></div>
+      <span id="productTitle"> 吾輩は猫である (新潮文庫) </span>
+      <img id="landingImage" src="https://m.media-amazon.com/images/I/s.jpg" data-old-hires="https://m.media-amazon.com/images/I/big.jpg"></body></html>"""
     a = parse_amazon(html, "4101010013")
     assert a.price == "￥693" and a.other_price == "￥318" and a.availability.startswith("在庫あり") and a.fetched
+    assert a.title == "吾輩は猫である (新潮文庫)" and a.image.endswith("big.jpg")
     line = amazon_line(a)
     assert line == ("[Amazon](https://www.amazon.co.jp/dp/4101010013) ￥693 ／ 中古 ￥318〜"
                     " ・ [Keepa](https://keepa.com/#!product/5-4101010013)")
