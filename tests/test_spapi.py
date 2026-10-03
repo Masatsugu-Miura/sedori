@@ -38,3 +38,18 @@ def test_configured_requires_all_three(monkeypatch):
     assert not spapi.configured()
     monkeypatch.setenv("SPAPI_REFRESH_TOKEN", "c")
     assert spapi.configured()
+
+
+def test_catalog_summary_and_merge():
+    from bot.lookup import BookMeta, merge_amazon
+    body = {"summaries": [{"marketplaceId": "A1VC38T7YXB528", "itemName": "吾輩は猫である (新潮文庫)"}],
+            "images": [{"marketplaceId": "A1VC38T7YXB528", "images": [
+                {"variant": "MAIN", "link": "https://m.media-amazon.com/images/I/small.jpg", "height": 75, "width": 50},
+                {"variant": "MAIN", "link": "https://m.media-amazon.com/images/I/big.jpg", "height": 500, "width": 340},
+                {"variant": "PT01", "link": "https://m.media-amazon.com/images/I/pt01.jpg", "height": 500, "width": 340}]}]}
+    assert spapi.catalog_summary(body) == {"title": "吾輩は猫である (新潮文庫)", "image": "https://m.media-amazon.com/images/I/big.jpg"}
+    a = AmazonInfo(asin="4101010013", fetched=True, title="吾輩は猫である (新潮文庫)", image="https://m.media-amazon.com/images/I/big.jpg")
+    m = merge_amazon(BookMeta(), a)
+    assert m.title == "吾輩は猫である (新潮文庫)" and m.cover.endswith("big.jpg") and m.amazon is a
+    kept = merge_amazon(BookMeta(title="openBD の書名", cover="https://cover/x.jpg"), a)
+    assert kept.title == "openBD の書名" and kept.cover == "https://cover/x.jpg"     # 既にあるものは上書きしない

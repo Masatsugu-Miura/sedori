@@ -106,11 +106,47 @@ def summarize(new_payload: dict, used_payload: dict) -> dict:
     return out
 
 
+async def get_catalog_item(session: aiohttp.ClientSession, asin: str) -> dict:
+    """Catalog Items API（2022-04-01）で商品名と画像を取る → {"title", "image"}。無ければ空文字。"""
+    token = await access_token(session)
+    url = f"{ENDPOINT}/catalog/2022-04-01/items/{asin}"
+    params = {"marketplaceIds": marketplace(), "includedData": "summaries,images"}
+    async with session.get(url, params=params, headers={"x-amz-access-token": token, "Accept": "application/json"},
+                           timeout=TIMEOUT) as r:
+        body = await r.json(content_type=None)
+        if r.status != 200:
+            raise RuntimeError(f"SP-API catalog HTTP {r.status}: {str(body)[:200]}")
+    return catalog_summary(body)
+
+
+def catalog_summary(body: dict) -> dict:
+    title = ""
+    for s in body.get("summaries") or []:
+        title = s.get("itemName") or title
+        if title:
+            break
+    image = ""
+    best = 0
+    for grp in body.get("images") or []:
+        for im in grp.get("images") or []:
+            if (im.get("variant") or "MAIN") != "MAIN":
+                continue
+            size = int(im.get("width") or 0)
+            if im.get("link") and size >= best:
+                image, best = im["link"], size
+    return {"title": title, "image": image}
+
+
 async def fetch_prices(session: aiohttp.ClientSession, asin: str) -> dict:
-    """新品・中古を取って summarize した dict。失敗は例外。"""
+    """新品・中古の価格と、商品名・画像をまとめた dict。価格が取れなければ例外、商品名・画像は取れなくても続行。"""
     new_payload = await get_item_offers(session, asin, "New")
     used_payload = await get_item_offers(session, asin, "Used")
-    return summarize(new_payload, used_payload)
+    out = summarize(new_payload, used_payload)
+    try:
+        out.update(await get_catalog_item(session, asin))
+    except Exception:  # noqa: BLE001
+        out.update({"title": "", "image": ""})
+    return out
 
 
 def dumps(payload: dict) -> str:   # テスト・デバッグ用

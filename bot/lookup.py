@@ -61,6 +61,8 @@ class AmazonInfo:
     used_count: int = 0      # SP-API: 中古の出品数
     fba_new: str = ""        # SP-API: FBA 新品の最安
     source: str = ""         # "spapi" / "page"
+    title: str = ""          # SP-API: Amazon 上の商品名（openBD に無い本の補完用）
+    image: str = ""          # SP-API: 商品画像 URL（書影の補完用）
 
     @property
     def url(self) -> str:
@@ -157,6 +159,18 @@ def parse_amazon(html: str, asin: str) -> AmazonInfo:
     return info
 
 
+def merge_amazon(meta: "BookMeta", amazon: Optional[AmazonInfo]) -> "BookMeta":
+    """Amazon の情報を書誌に合流させる。openBD / Google Books で取れなかった書名・書影は Amazon のもので補う。"""
+    meta.amazon = amazon
+    if amazon:
+        if not meta.title and amazon.title:
+            meta.title = amazon.title
+            meta.source = meta.source or "Amazon"
+        if not meta.cover and amazon.image:
+            meta.cover = amazon.image
+    return meta
+
+
 def _is_amazon_block(html: str) -> bool:
     """ロボット確認ページか（商品ページの JS にも "captcha" の語はあるので、確認ページ特有の印で判定）。"""
     return ('id="captchacharacters"' in html or "Amazon CAPTCHA" in html or "ロボットではないことを確認" in html
@@ -188,7 +202,8 @@ async def fetch_amazon(session: aiohttp.ClientSession, asin: Optional[str]) -> O
         try:
             d = await spapi.fetch_prices(session, asin)
             return AmazonInfo(asin=asin, price=d["price"], other_price=d["other_price"], fetched=True,
-                              new_count=d["new_count"], used_count=d["used_count"], fba_new=d["fba_new"], source="spapi")
+                              new_count=d["new_count"], used_count=d["used_count"], fba_new=d["fba_new"], source="spapi",
+                              title=d.get("title", ""), image=d.get("image", ""))
         except Exception as e:  # noqa: BLE001
             import logging   # noqa: PLC0415
             logging.getLogger("zaikobot").warning("SP-API で価格を取れず、商品ページに切り替え: %s", e)
