@@ -1,0 +1,68 @@
+# 引き継ぎメモ（Discord 本在庫検索 bot「ブック探偵」）
+
+最終更新: 2026-10-07。前のセッション（クラウド、claude.ai/code）からの引き継ぎ。新しいセッションはまずこれを読む。
+
+## 1. 何を作ったか
+- Discord に ISBN / JAN / ASIN / Amazon URL を貼ると、書店の店頭在庫をまとめて返す bot。`python -m bot.main`。
+- ブランチ: `claude/discord-book-inventory-bot-tm2q4h`（main には未マージ。PR は作っていない）。
+- ユーザー（mitti さん）は愛知のせどり業者。愛知・京都が「地元」。スマホから操作することが多く、説明は**1つずつ・短く・日本語**で。
+
+## 2. 動作環境（ユーザーの PC）
+- Windows、Python 3.14。フォルダ `sedori`（OneDrive のデスクトップ配下の可能性）。
+- 起動: `start.bat`（黒い画面）または `start_hidden.vbs`（画面なし、ログ `data\bot.log`）。停止 `stop.bat`。
+- 更新: `update.bat`（GitHub の ZIP を取って上書き。`.env` `.venv` `data` は残る）→ 停止 → 起動。
+- 自動起動: `autostart.bat`（スタートアップに登録、画面なし版）。解除 `autostart.bat remove`。
+- 設定は `.env`（`.env.example` 参照）。DISCORD_TOKEN、DISCORD_WEBHOOK_URL は設定済み。
+- **PC の中はクラウドのセッションからは見えない**。PC 側の作業（.env 編集、起動）はユーザー本人か、PC で `claude remote-control` を立ち上げたリモートセッションで行う。ユーザーの他のツール（買取スキャナー、在庫検索ツール等）はリモートセッションで動いている（フォルダ例: `C:\Users\ascot\OneDrive\デスクトップ\買取スキャナー`）。
+
+## 3. 使い方（Discord）
+- `9784101010014` → 地元（愛知＋京都）。`… 全国` → 全国。`… 京都` → 県指定。コードの後ろの地域でない言葉は無視。
+- `/zaiko` `/local` `/stores` もある。`/addstore` `/togglestore` はサーバー管理権限が必要。
+- Discord 貼り付け用マニュアル: `docs/DISCORD_MANUAL.md`。
+
+## 4. 表示の仕様（ユーザー希望で決まったもの。勝手に戻さない）
+- 先頭 Embed: 書名、ASIN/ISBN、著者/出版社、`定価 …`、`[Amazon](商品ページ) ￥…（新品 N件） ／ 中古 ￥…〜（N件） ・ [Keepa](…)`、Keepa の波形 PNG（添付ファイル `keepa.png`。URL 直貼りは Keepa が Discord をブロックするため不可）。
+  「検索範囲」「在庫あり店舗 合計」「地域別の内訳」の行は**出さない**（全国のときだけ「検索範囲: 全国」）。
+- 地元検索は `📍 愛知` `📍 京都` の Embed に分かれ、店名の地域ラベル（愛知・名古屋市）は**出さない**。
+- チェーンは本文（description）に `📘 **[チェーン名](リンク)** 愛知 25/26`（在庫あり店数/確認店数）＋ 店の行 `📘 店名 ─ 多い / 少ない / 2個`。
+  在庫なしの店は行に出さない。**全店表示**（省略しない。長ければ続きの Embed / 次のメッセージ）。
+- 🟢🟡🔴 の丸は在庫量には使わない（ユーザーが分かりにくいと言った）。頭の絵文字は**系列の目印**（stores.json の `icon`、系列は render.BRAND_ICONS）。
+- 書店在庫情報プロジェクト（版元ドットコム）の結果は系列ごとに `🔵 **くまざわ書店** 12/17` の小見出しでまとめ、行から系列名を省く。
+- 末尾: `🔗 リンク・要確認`（店舗行の無いチェーン）、`📱 ほんらぶ / 本コレ / Honya Club（愛知）`、`📞 電話で確認（愛知）`、同じく（京都）。
+  電話の欄は**店名（市）だけ**（電話番号・説明は出さない）。
+- Discord の制限: 6000 文字（UTF-16 単位、絵文字は 2）に加えて **UTF-8 約 10KB** で 413 になる → render.py で両方見て分割。
+
+## 5. 書店ごとの取り方（bot/stores/、stores.json）
+- 自動で店舗在庫が取れる: 紀伊國屋（店舗在庫フォーム POST）、丸善ジュンク堂（商品ページの在庫 API）、三洋堂、三省堂（BookStockList）、未来屋（都道府県 API）、TSUTAYA（住所キーワード検索）、ブックファースト、アニメイト（公開キーの在庫 API）、有隣堂（無効化中。地元に店なし）、
+  **書店在庫情報プロジェクト（openBS ＋ カーリル API）** = くまざわ・いけだ・大垣・豊川堂・らくだ/あおい（明屋）・TOUTEN・NAgoya Book Center・カルコス・BOOKSえみたす（日販系、2026-10-02 に連携復旧）。
+- リンクのみ: 駿河屋（Cloudflare）、宮脇書店、Honya Club、e-hon、書籍横断検索。大垣・くまざわの自社サイト、Amazon、Keepa の単独欄は重複なので無効。
+- 自動不可（📱📞 に出す）: 精文館（Honya Club 加盟）、本の王国、夢屋、正文館、喜久屋、文教堂、ヴィレヴァン、信長書店、ボナンザ書房、こみかるはうす、同盟書林、オンセブンデイズ、流水書房、ザ・リブレット、本のメグリア、Honya Club 加盟の地元書店、京都の個人店（三盛堂、ホワイトブックス、音羽堂、東寺書院、遠藤書店、恵文社）。
+- ほんらぶ・本コレはアプリ専用で API なし。アプリの解析・ボット対策の突破は**しない**方針（Amazon の確認ページも突破しない）。
+- 書店サイトへのリクエストは毎回ランダム待機 0.3〜1.2 秒（`SCRAPE_DELAY_*`）、同一サイト同時 4 本。
+
+## 6. Amazon まわり
+- `bot/lookup.py fetch_amazon`: SP-API のキー（`SPAPI_CLIENT_ID/SECRET/REFRESH_TOKEN`）があれば `bot/spapi.py`（Product Pricing v0 getItemOffers + Catalog Items 2022-04-01）、無ければ商品ページを読む（aiohttp → 確認ページなら OS の curl で 1 回だけ再試行）。
+- 雑誌 JAN（491…）は `resolve_jan_asin` で ASIN を探す（SP-API のカタログ検索 → 無ければ Amazon 検索ページ）。openBD は雑誌を持たないので、これが無いと「書誌情報なし」。
+- 書名・書影: openBD → Google Books → Amazon（SP-API カタログ or 商品ページ）の順で補完（`merge_amazon`）。
+- **未確認**: ユーザーの PC では SP-API のキーがまだ `.env` に入っていない可能性が高い（Obsidian のメモにあると言っている）。入れれば価格・雑誌の書名が確実になる。クラウドからは Amazon が確認ページを返すので検証不可。
+
+## 7. 監視
+- `bot/watch.py`: 毎日 12 時（JST、`WATCH_HOUR`）に日販系の在庫連携をチェックし、状態が変わったときだけ Discord（`NOTIFY_CHANNEL_ID` か Webhook）に通知。`scripts/nippan_watch.py --post --force` で手動。
+- クラウド側の毎日チェック（Routine「日販連携チェック（昼）」）は、PC の bot が動き始めたので**無効化済み**。
+
+## 8. 検証用
+- `python scripts/webhook_test.py 9784101010014 [全国|京都] [--dry]` … bot なしで結果を Webhook に投稿（`.env` の DISCORD_WEBHOOK_URL）。
+- `python -m pytest -q` … 80 件。通信しない。
+- テスト ISBN: 9784101010014（吾輩は猫である）、9784088852676（ToLOVEる短編集）、雑誌 JAN 4912121661168。
+
+## 9. 直近の状態・残件
+- ユーザーは最新 ZIP をまだ入れていない可能性あり（表示が古い版だった）。`update.bat` を入れた版から先は update だけで済む。
+- 直近の依頼で未確認: SP-API キーの `.env` 投入、`sedori` フォルダでのリモートセッション立ち上げ（PC 側の「在庫検索ツール」セッションに依頼済みだが返事なし）。
+- Google Books は共有 IP の日次上限に当たることがある（クラウドから）。PC からは問題ないはず。
+- カーリルの公開キー（版元ドットコムのページ埋め込み）を使っている。`CALIL_APPKEY` を取って入れると安定。
+- 要望が来たら: 反応するチャンネルの絞り込み（`AUTO_REPLY_CHANNELS`）、絵文字の変更（stores.json `icon`）、店の追加（stores.json か `/addstore`）。
+
+## 10. ユーザーとのやり取りの流儀
+- スマホからが多い。手順は**1ステップずつ**、専門用語は避ける。コードや URL はコピーしやすいよう枠で。
+- トークン・Webhook URL・API キーはチャットに貼らせない（PC の `.env` に直接）。
+- 何か直したら、`python scripts/webhook_test.py 9784101010014` で Discord に投稿して見てもらう、コミット、プッシュ、までが 1 セット。
