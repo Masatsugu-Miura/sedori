@@ -6,3 +6,7 @@ data/*.csv
 data/nippan_state.json
 .pytest_cache/
 .ruff_cache/
+data/bot.log
+update.zip
+_update/
+.env.bak
