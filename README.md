@@ -56,7 +56,11 @@ Discord に **ASIN か JAN（ISBN）** を貼ると、登録した書店チェ�
 4. **OAuth2 → URL Generator** で Scopes `bot` `applications.commands`、Bot Permissions `Send Messages` `Embed Links` `Read Message History` を選び、生成URLでサーバーに招待
 
 ### 2. 起動（ローカル / VPS、Python 3.10 以上）
-Windows は `start.bat` をダブルクリック、Mac / Linux は `bash start.sh`。初回は仮想環境を作り、`.env` が無ければ作って止まるので、
+**Windows でいちばん簡単な方法**: `setup.bat` をダブルクリック。フォルダを `ドキュメント\買取スキャナー` に移動し
+（デスクトップ等にすでに「買取スキャナー」フォルダがあればそこへ）、Python 環境を作り、デスクトップに
+「買取スキャナー 起動」「買取スキャナー 停止」「買取スキャナー フォルダ」のボタンを置きます。以後は「起動」をダブルクリックするだけです。
+
+手動で動かす場合、Windows は `start.bat` をダブルクリック、Mac / Linux は `bash start.sh`。初回は仮想環境を作り、`.env` が無ければ作って止まるので、
 `DISCORD_TOKEN` を書いてもう一度実行します。黒い画面を出さずに裏で動かすには `start_hidden.vbs`（ログは `data\bot.log`、停止は `stop.bat`）。
 Windows でサインイン後に自動起動させるには `autostart.bat` をダブルクリック（裏で起動。解除は `autostart.bat remove`、
 黒い画面つきで登録したいときは `autostart.bat window`）。最新版への更新は `update.bat` をダブルクリック（`.env` `.venv` `data` は残る）→ bot を閉じて
