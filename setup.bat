@@ -1,6 +1,6 @@
 @echo off
 rem One-click setup (Windows). Double-click this file.
-rem  1) moves this whole folder to  Documents\(Kaitori Scanner folder, Japanese name) or an existing one on Desktop/Documents/home
+rem  1) moves this whole folder INTO the existing Kaitori Scanner folder (Japanese name) as  <that folder>\sedori
 rem  2) rebuilds the Python venv there (needed after a move)
 rem  3) puts start / stop / folder buttons on the Desktop
 rem  4) fixes the sign-in autostart shortcut if you registered one

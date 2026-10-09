@@ -56,9 +56,9 @@ Discord に **ASIN か JAN（ISBN）** を貼ると、登録した書店チェ�
 4. **OAuth2 → URL Generator** で Scopes `bot` `applications.commands`、Bot Permissions `Send Messages` `Embed Links` `Read Message History` を選び、生成URLでサーバーに招待
 
 ### 2. 起動（ローカル / VPS、Python 3.10 以上）
-**Windows でいちばん簡単な方法**: `setup.bat` をダブルクリック。フォルダを `ドキュメント\買取スキャナー` に移動し
-（デスクトップ等にすでに「買取スキャナー」フォルダがあればそこへ）、Python 環境を作り、デスクトップに
-「買取スキャナー 起動」「買取スキャナー 停止」「買取スキャナー フォルダ」のボタンを置きます。以後は「起動」をダブルクリックするだけです。
+**Windows でいちばん簡単な方法**: `setup.bat` をダブルクリック。このフォルダを丸ごと既存の「買取スキャナー」フォルダの中
+（`買取スキャナー\sedori`）へ移動し（買取スキャナーの直下にはファイルを置かない）、Python 環境を作り直し、デスクトップに
+「ブック探偵 起動」「ブック探偵 停止」「ブック探偵 フォルダ」のボタンを置きます。以後は「起動」をダブルクリックするだけです。
 
 手動で動かす場合、Windows は `start.bat` をダブルクリック、Mac / Linux は `bash start.sh`。初回は仮想環境を作り、`.env` が無ければ作って止まるので、
 `DISCORD_TOKEN` を書いてもう一度実行します。黒い画面を出さずに裏で動かすには `start_hidden.vbs`（ログは `data\bot.log`、停止は `stop.bat`）。
