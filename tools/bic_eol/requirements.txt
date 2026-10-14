@@ -1,0 +1,4 @@
+requests
+beautifulsoup4
+# --browser を使う場合のみ
+# playwright
