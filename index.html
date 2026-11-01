@@ -177,8 +177,8 @@ const DEFAULTS = [
     "https://auctions.yahoo.co.jp/closedsearch/closedsearch?p=%s",{on:true}),
   D("メルカリ 売切れ","相場・リサーチ","https://jp.mercari.com/",
     "https://jp.mercari.com/search?keyword=%s&status=sold_out",{on:true}),
-  D("JANコード検索","相場・リサーチ","https://www.jancodelookup.com/",
-    "https://www.jancodelookup.com/code/%s"),
+  D("JANコード検索","相場・リサーチ","https://www.janken.jp/",
+    "https://www.janken.jp/goods/jk_catalog_syosai.php?jan=%s"),
 
   D("楽天市場","仕入れ（ネット）","https://www.rakuten.co.jp/",
     "https://search.rakuten.co.jp/search/mall/%s/",{on:true}),
@@ -233,8 +233,21 @@ function load(){
   try{
     const v=JSON.parse(raw); sites=v.sites; hist=v.hist||[];
     if(!Array.isArray(sites)||!sites.length) throw 0;
+    migrate();
   }catch(e){ sites=JSON.parse(JSON.stringify(DEFAULTS)); hist=[]; }
   render();
+}
+/* 保存済みデータ内の終了したサイトを差し替える */
+function migrate(){
+  let ch=false;
+  sites.forEach(x=>{
+    if(/jancodelookup\.com/.test(x.url||"")||/jancodelookup\.com/.test(x.s||"")){
+      x.url="https://www.janken.jp/";
+      x.s="https://www.janken.jp/goods/jk_catalog_syosai.php?jan=%s";
+      ch=true;
+    }
+  });
+  if(ch) save();
 }
 function save(){
   const v=JSON.stringify({sites,hist});
